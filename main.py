@@ -158,26 +158,29 @@ else:
         col_heart, col_title = st.columns([0.05, 0.95])
 
         with col_heart:
-            if st.button("💛" if is_fav else "🤍",
-    key=f"fav_{pk}_{idx}",):
-    now = datetime.datetime.now().isoformat()
+    if st.button(
+        "💛" if is_fav else "🤍",
+        key=f"fav_{pk}_{idx}",
+    ):
+        now = datetime.datetime.now().isoformat()
 
-    if is_fav:
-        # 삭제
-        cells = fav_sheet.findall(pk)
-        for c in cells:
-            if fav_sheet.cell(c.row, 1).value == USER_ID:
-                fav_sheet.delete_rows(c.row)
-                break
+        if is_fav:
+            # 🔹 Google Sheet에서 삭제
+            cells = fav_sheet.findall(pk)
+            for c in cells:
+                if fav_sheet.cell(c.row, 1).value == USER_ID:
+                    fav_sheet.delete_rows(c.row)
+                    break
 
-        st.session_state.favorites.remove(pk)
+            st.session_state.favorites.remove(pk)
 
-    else:
-        # 저장
-        fav_sheet.append_row([USER_ID, pk, now])
-        st.session_state.favorites.add(pk)
+        else:
+            # 🔹 Google Sheet에 저장
+            fav_sheet.append_row([USER_ID, pk, now])
+            st.session_state.favorites.add(pk)
 
-    st.rerun()
+        st.rerun()
+
 
 
         with col_title:
