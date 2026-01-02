@@ -96,58 +96,61 @@ if view_mode == "💛 즐겨찾기만":
 if sort_by_freq and "빈출" in filtered_df.columns:
     filtered_df = filtered_df.sort_values("빈출", ascending=False)
 
-
 # --------------------------------------------------
-# 6. 메인 화면
+# 7. 메인 화면 (⚠️ filtered_df 사용)
 # --------------------------------------------------
-for idx, (_, row) in enumerate(df.iterrows()):
-    pk = row["PK"]
-    is_fav = pk in st.session_state.favorites
+if filtered_df.empty:
+    st.info("선택한 조건에 해당하는 개념이 없습니다.")
+else:
+    for idx, (_, row) in enumerate(filtered_df.iterrows()):
+        pk = row["PK"]
+        is_fav = pk in st.session_state.favorites
 
-    col_heart, col_title = st.columns([0.05, 0.95])
+        col_heart, col_title = st.columns([0.05, 0.95])
 
-    with col_heart:
-        if st.button(
-            "💛" if is_fav else "🤍",
-            key=f"fav_{pk}_{idx}",
-            help="즐겨찾기",
-        ):
-            if is_fav:
-                st.session_state.favorites.remove(pk)
-            else:
-                st.session_state.favorites.add(pk)
-            st.rerun()
+        with col_heart:
+            if st.button(
+                "💛" if is_fav else "🤍",
+                key=f"fav_{pk}_{idx}",
+                help="즐겨찾기",
+            ):
+                if is_fav:
+                    st.session_state.favorites.remove(pk)
+                else:
+                    st.session_state.favorites.add(pk)
+                st.rerun()
 
-    with col_title:
-        st.markdown(
-            f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>",
-            unsafe_allow_html=True
-        )
+        with col_title:
+            st.markdown(
+                f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>",
+                unsafe_allow_html=True
+            )
 
-    if pd.notna(row.get("내용")):
-        st.write(row["내용"])
+        if pd.notna(row.get("내용")):
+            st.write(row["내용"])
 
-    with st.expander("📝 관련 기출문제 확인"):
-        if pd.notna(row.get("기출문제(질문)")):
-            year = row.get("기출문제(출제년도)", "연도 미상")
+        with st.expander("📝 관련 기출문제 확인"):
+            if pd.notna(row.get("기출문제(질문)")):
+                year = row.get("기출문제(출제년도)", "연도 미상")
 
-            question_block = f"""
+                question_block = f"""
 **[{year} 출제]**  
 {row['기출문제(질문)']}
 """
 
-            if pd.notna(row.get("기출문제(보기)")):
-                question_block += f"""
+                if pd.notna(row.get("기출문제(보기)")):
+                    question_block += f"""
 
 **보기**  
 {row['기출문제(보기)']}
 """
 
-            st.info(question_block)
+                st.info(question_block)
 
-            if pd.notna(row.get("정답")):
-                st.success(f"정답: {row['정답']}")
-        else:
-            st.write("연결된 기출문제가 없습니다.")
+                if pd.notna(row.get("정답")):
+                    st.success(f"정답: {row['정답']}")
+            else:
+                st.write("연결된 기출문제가 없습니다.")
 
-    st.divider()
+        st.divider()
+
