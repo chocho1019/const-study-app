@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import uuid
 
 # --------------------------------------------------
 # 1. 앱 설정
@@ -58,8 +59,16 @@ df = df_concept.merge(df_question, on="PK", how="left")
 # --------------------------------------------------
 # 4. 세션 상태
 # --------------------------------------------------
+# 즐겨찾기
 if "favorites" not in st.session_state:
     st.session_state.favorites = set()
+
+# 사용자 ID (브라우저 기준)
+if "user_id" not in st.session_state:
+    st.session_state.user_id = str(uuid.uuid4())
+
+USER_ID = st.session_state.user_id
+
 
 # --------------------------------------------------
 # 5. 상단 로고
@@ -95,6 +104,8 @@ if view_mode == "💛 즐겨찾기만":
 
 if sort_by_freq and "빈출" in filtered_df.columns:
     filtered_df = filtered_df.sort_values("빈출", ascending=False)
+
+st.sidebar.caption(f"USER ID: {USER_ID[:8]}...")
 
 # --------------------------------------------------
 # 7. 메인 화면 (⚠️ filtered_df 사용)
