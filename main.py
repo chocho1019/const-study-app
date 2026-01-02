@@ -10,30 +10,23 @@ st.markdown("""
     .concept-title { font-size: 24px; font-weight: bold; color: #2E4053; }
     .stButton button { width: 100%; }
     hr { margin: 1.5rem 0; }
-    .question-box { background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 5px solid #007bff; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. 데이터 로드 함수 (개선됨)
-@st.cache_data(ttl=600)  # 10분마다 캐시 갱신
+# 3. 데이터 로드 함수
+@st.cache_data
 def load_data(url):
     try:
-        # csv 변환 주소 확인
-        csv_url = url.replace('/edit?gid=', '/export?format=csv&gid=')
-        df = pd.read_csv(csv_url)
-        
-        # 모든 컬럼명의 앞뒤 공백 제거 및 문자열화
-        df.columns = [str(col).strip() for col in df.columns]
-        
-        # 데이터프레임 전체의 문자열 앞뒤 공백 제거
-        df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+        # 데이터 로드 후 모든 열 이름의 공백을 제거하여 일치시킴
+        df = pd.read_csv(url)
+        df.columns = [col.strip() for col in df.columns]
         return df
     except Exception as e:
         st.error(f"데이터 로드 실패: {e}")
         return None
 
-# 구글 시트 링크 (gid 포함된 원본 링크 사용 가능하도록 처리)
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/edit?gid=775019664#gid=775019664"
+# 구글 시트 CSV 링크
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv"
 df = load_data(SHEET_URL)
 
 if df is not None:
@@ -41,50 +34,60 @@ if df is not None:
     if 'favorites' not in st.session_state:
         st.session_state.favorites = set()
 
-    # --- 사이드바 ---
+    # --- 사이드바: 필터 설정 ---
     st.sidebar.title("🔍 학습 필터")
     
+    # 빈출도순 정렬 (최상단에 배치)
     sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순으로 정렬")
+    
     view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "💛 즐겨찾기만"])
     
+    # 위계적 필터링
     filtered_df = df.copy()
 
-    # 필터링 로직 (컬럼 존재 여부 확인 필수)
-    cols = filtered_df.columns
-    if '과목' in cols:
+    # 1. 과목
+    if '과목' in filtered_df.columns:
         sub_list = ["전체"] + sorted(filtered_df['과목'].dropna().unique().tolist())
         sel_sub = st.sidebar.selectbox("과목 선택", sub_list)
         if sel_sub != "전체":
             filtered_df = filtered_df[filtered_df['과목'] == sel_sub]
 
-    if '대카테고리' in cols:
+    # 2. 대카테고리
+    if '대카테고리' in filtered_df.columns:
         major_list = ["전체"] + sorted(filtered_df['대카테고리'].dropna().unique().tolist())
         sel_major = st.sidebar.selectbox("대카테고리 선택", major_list)
         if sel_major != "전체":
             filtered_df = filtered_df[filtered_df['대카테고리'] == sel_major]
 
+    # 3. 소카테고리
+    if '소카테고리' in filtered_df.columns:
+        minor_list = ["전체"] + sorted(filtered_df['소카테고리'].dropna().unique().tolist())
+        sel_minor = st.sidebar.selectbox("소카테고리 선택", minor_list)
+        if sel_minor != "전체":
+            filtered_df = filtered_df[filtered_df['소카테고리'] == sel_minor]
+
+    # 즐겨찾기 필터 적용
     if view_mode == "💛 즐겨찾기만":
         filtered_df = filtered_df[filtered_df['PK'].astype(str).isin(st.session_state.favorites)]
 
-    if sort_by_freq and '빈출' in cols:
-        # 빈출 숫자가 문자열일 경우를 대비해 숫자형 변환 후 정렬
-        filtered_df['빈출'] = pd.to_numeric(filtered_df['빈출'], errors='coerce').fillna(0)
+    # 빈출도 정렬 실행
+    if sort_by_freq and '빈출' in filtered_df.columns:
         filtered_df = filtered_df.sort_values(by='빈출', ascending=False)
 
     # --- 메인 화면 ---
     st.title("🏗️ 건축기사 필기 요약노트")
-    st.caption("구글 시트와 실시간 연동된 요약 정보입니다.")
     
     if filtered_df.empty:
         st.info("조건에 맞는 데이터가 없습니다. 필터를 조정해 보세요.")
     else:
-        for idx, row in filtered_df.iterrows():
-            pk = str(row['PK']) if 'PK' in row and pd.notna(row['PK']) else f"row_{idx}"
+        for _, row in filtered_df.iterrows():
+            # PK가 없을 경우 인덱스를 대신 사용
+            pk = str(row['PK']) if 'PK' in row else str(_)
             
-            # 개념 헤더
+            # 개념 헤더 영역
             col_title, col_fav = st.columns([0.85, 0.15])
             with col_title:
-                concept_name = row['개념'] if '개념' in row and pd.notna(row['개념']) else "제목 없음"
+                concept_name = row['개념'] if '개념' in row else "제목 없음"
                 st.markdown(f"<div class='concept-title'>{concept_name}</div>", unsafe_allow_html=True)
             with col_fav:
                 is_fav = pk in st.session_state.favorites
@@ -94,10 +97,10 @@ if df is not None:
                     st.rerun()
             
             # 본문 내용
-            if '내용' in row and pd.notna(row['내용']):
+            if '내용' in row:
                 st.write(row['내용'])
             
-            # 이미지
+            # 이미지 출력
             if '이미지' in row and pd.notna(row['이미지']):
                 img_url = str(row['이미지']).strip()
                 if img_url.startswith('http'):
