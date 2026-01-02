@@ -87,7 +87,7 @@ if filtered_df.empty:
     st.info("조건에 맞는 데이터가 없습니다.")
 else:
     for idx, (_, row) in enumerate(filtered_df.iterrows()):
-    pk = row["PK"]
+        pk = row["PK"]
 
         col_title, col_fav = st.columns([0.85, 0.15])
         with col_title:
@@ -98,9 +98,11 @@ else:
 
         with col_fav:
             is_fav = pk in st.session_state.favorites
-                if st.button(
-        "💛" if is_fav else "🤍",
-        key=f"fav_{pk}_{idx}"):
+
+            if st.button(
+                "💛" if is_fav else "🤍",
+                key=f"fav_{pk}_{idx}"
+            ):
                 if is_fav:
                     st.session_state.favorites.remove(pk)
                 else:
