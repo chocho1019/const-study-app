@@ -81,31 +81,44 @@ df_question = load_sheet(QUESTION_URL)
 df = df_concept.merge(df_question, on="PK", how="left")
 
 # --------------------------------------------------
-# 4. 세션 상태
+# 4. 세션 상태 및 이메일 로그인
 # --------------------------------------------------
-# 즐겨찾기
-if "favorites" not in st.session_state:
-    st.session_state.favorites = set()
+st.sidebar.title("🔐 사용자 인증")
 
-# 사용자 ID (브라우저 기준)
-if "user_id" not in st.session_state:
-    st.session_state.user_id = str(uuid.uuid4())
+# [수정포인트 1] 접속을 허용할 이메일 목록을 작성하세요.
+ALLOWED_EMAILS = ["your-email@gmail.com", "another-user@naver.com"] 
 
-USER_ID = st.session_state.user_id
+# 이메일 입력창
+user_email = st.sidebar.text_input("등록된 이메일을 입력하세요", key="login_email").strip()
+
+if not user_email:
+    st.info("왼쪽 사이드바에서 이메일 로그인을 진행해주세요.")
+    st.stop()  # 이메일 입력 전까지 앱 내용 표시 안 함
+
+if user_email not in ALLOWED_EMAILS:
+    st.error("등록되지 않은 사용자입니다. 관리자에게 문의하세요.")
+    st.stop()  # 허용되지 않은 이메일이면 중단
+
+# 인증 성공 시 이메일을 USER_ID로 설정
+USER_ID = user_email
+st.session_state.user_id = USER_ID
 
 # --------------------------------------------------
-# 저장된 즐겨찾기 불러오기
+# 5. 저장된 즐겨찾기 불러오기
 # --------------------------------------------------
+# 시트에서 전체 기록을 가져온 뒤, 현재 로그인한 이메일(USER_ID)의 데이터만 필터링
 records = fav_sheet.get_all_records()
 
 user_favs = {
-    str(r["PK"])
-    for r in records
-    if r["user_id"] == USER_ID
+    str(r["user_id"]) : set() # 초기화용 (선택 사항)
 }
 
-st.session_state.favorites = user_favs
-
+# 현재 로그인한 사용자의 즐겨찾기 PK들만 집합(set)으로 만듦
+st.session_state.favorites = {
+    str(r["PK"])
+    for r in records
+    if str(r["user_id"]) == USER_ID
+}
 
 
 # --------------------------------------------------
