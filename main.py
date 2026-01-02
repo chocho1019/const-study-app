@@ -157,53 +157,55 @@ else:
 
         col_heart, col_title = st.columns([0.05, 0.95])
 
+        # ❤️ 하트 버튼
         with col_heart:
-    if st.button(
-        "💛" if is_fav else "🤍",
-        key=f"fav_{pk}_{idx}",
-    ):
-        now = datetime.datetime.now().isoformat()
+            if st.button(
+                "💛" if is_fav else "🤍",
+                key=f"fav_{pk}_{idx}",
+            ):
+                now = datetime.datetime.now().isoformat()
 
-        if is_fav:
-            # 🔹 Google Sheet에서 삭제
-            cells = fav_sheet.findall(pk)
-            for c in cells:
-                if fav_sheet.cell(c.row, 1).value == USER_ID:
-                    fav_sheet.delete_rows(c.row)
-                    break
+                if is_fav:
+                    # 🔹 Google Sheet에서 삭제
+                    cells = fav_sheet.findall(pk)
+                    for c in cells:
+                        if fav_sheet.cell(c.row, 1).value == USER_ID:
+                            fav_sheet.delete_rows(c.row)
+                            break
 
-            st.session_state.favorites.remove(pk)
+                    st.session_state.favorites.remove(pk)
 
-        else:
-            # 🔹 Google Sheet에 저장
-            fav_sheet.append_row([USER_ID, pk, now])
-            st.session_state.favorites.add(pk)
+                else:
+                    # 🔹 Google Sheet에 저장
+                    fav_sheet.append_row([USER_ID, pk, now])
+                    st.session_state.favorites.add(pk)
 
-        st.rerun()
+                st.rerun()
 
-
-
+        # 📘 개념 제목
         with col_title:
             st.markdown(
                 f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>",
                 unsafe_allow_html=True
             )
 
+        # 📄 내용
         if pd.notna(row.get("내용")):
             st.write(row["내용"])
 
+        # 📝 기출문제
         with st.expander("📝 관련 기출문제 확인"):
             if pd.notna(row.get("기출문제(질문)")):
                 year = row.get("기출문제(출제년도)", "연도 미상")
 
                 question_block = f"""
 **[{year} 출제]**  
-**Q.{row['기출문제(질문)']}**
+**Q. {row['기출문제(질문)']}**
 """
 
                 if pd.notna(row.get("기출문제(보기)")):
                     question_block += f"""
-  
+
 {row['기출문제(보기)']}
 """
 
@@ -215,4 +217,3 @@ else:
                 st.write("연결된 기출문제가 없습니다.")
 
         st.divider()
-
