@@ -1,94 +1,109 @@
 import streamlit as st
 import pandas as pd
 
-# 1. 페이지 설정
-st.set_page_config(page_title="건축기사 2025 스마트 노트", layout="wide")
+# 1. 앱 설정 및 스타일링
+st.set_page_config(page_title="건축기사 마스터", layout="wide")
+st.markdown("""
+    <style>
+    .concept-title { font-size: 24px; font-weight: bold; color: #2E4053; }
+    .favorite-btn { float: right; }
+    </style>
+    """, unsafe_allow_stdio=True)
 
+# 2. 데이터 로드 (캐싱)
 @st.cache_data
 def load_data():
-    # 사용자님의 시트 ID
-    sheet_id = '1v3BcFDsWe6SioGRy_FfWKbh0bQqXHueGEHPZpwVRPxE'
-    
-    # [개념] 시트의 고유 GID (시트 하단 '개념' 탭을 누를 때 주소창 끝에 있는 숫자)
-    # 확인된 사용자님의 '개념' 탭 GID는 0입니다.
-    concept_gid = '0'
-    # [기출문제] 시트의 고유 GID
-    quiz_gid = '1799292523' 
+    # 실제 구글 시트 CSV 내보내기 링크
+    url = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv"
+    df = pd.read_csv(url)
+    return df
 
-    concept_url = f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={concept_gid}'
-    quiz_url = f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={quiz_gid}'
-    
-    df_c = pd.read_csv(concept_url).fillna("")
-    df_q = pd.read_csv(quiz_url).fillna("")
-    
-    # 열 이름의 앞뒤 공백 제거 (매칭 오류 방지)
-    df_c.columns = df_c.columns.str.strip()
-    df_q.columns = df_q.columns.str.strip()
-    
-    return df_c, df_q
+df = load_data()
 
-try:
-    df_concept, df_quiz = load_data()
+# 3. 세션 상태 초기화 (즐겨찾기 저장용)
+if 'favorites' not in st.session_state:
+    st.session_state.favorites = set()
 
-    # 탭 메뉴 구성
-    st.sidebar.title("📚 메뉴")
-    menu = st.sidebar.radio("이동", ["개념 학습", "기출문제 목록"])
+# --- 사이드바 및 필터부 ---
+st.sidebar.title("📚 학습 메뉴")
+view_mode = st.sidebar.radio("보기 모드", ["전체 학습", "⭐ 즐겨찾기만 보기"])
+sort_by_freq = st.sidebar.checkbox("빈출도 높은 순으로 정렬")
 
-    if menu == "개념 학습":
-        # 과목 필터
-        subjects = ["전체"] + sorted(list(df_concept['과목'].unique()))
-        sel_subject = st.sidebar.selectbox("과목 선택", subjects)
+# 필터링용 데이터 준비
+if view_mode == "⭐ 즐겨찾기만 보기":
+    display_df = df[df['PK'].astype(str).isin(st.session_state.favorites)]
+else:
+    display_df = df.copy()
+
+# 과목-대-소 카테고리 선택 (상단 배치)
+col1, col2, col3 = st.columns(3)
+with col1:
+    subjects = ["전체"] + sorted(display_df['과목'].unique().tolist())
+    sel_subject = st.selectbox("과목 선택", subjects)
+
+# 위계에 따른 필터링
+if sel_subject != "전체":
+    display_df = display_df[display_df['과목'] == sel_subject]
+
+with col2:
+    major_cats = ["전체"] + sorted(display_df['대카테고리'].unique().tolist())
+    sel_major = st.selectbox("대카테고리 선택", major_cats)
+
+if sel_major != "전체":
+    display_df = display_df[display_df['대카테고리'] == sel_major]
+
+with col3:
+    minor_cats = ["전체"] + sorted(display_df['소카테고리'].unique().tolist())
+    sel_minor = st.selectbox("소카테고리 선택", minor_cats)
+
+if sel_minor != "전체":
+    display_df = display_df[display_df['소카테고리'] == sel_minor]
+
+# 빈출도 정렬 적용
+if sort_by_freq:
+    display_df = display_df.sort_values(by='빈출', ascending=False)
+
+st.divider()
+
+# --- 메인 콘텐츠 영역 ---
+if display_df.empty:
+    st.info("조건에 맞는 내용이 없습니다.")
+else:
+    for _, row in display_df.iterrows():
+        pk_val = str(row['PK'])
         
-        view_df = df_concept.copy()
-        if sel_subject != "전체":
-            view_df = view_df[view_df['과목'] == sel_subject]
+        # 개념 제목 및 즐겨찾기 행
+        header_col, fav_col = st.columns([0.85, 0.15])
+        with header_col:
+            st.markdown(f"<div class='concept-title'>{row['개념']}</div>", unsafe_allow_stdio=True)
+        with fav_col:
+            # 별표 버튼 상태 제어
+            is_fav = pk_val in st.session_state.favorites
+            btn_label = "★" if is_fav else "☆"
+            if st.button(btn_label, key=f"fav_{pk_val}"):
+                if is_fav:
+                    st.session_state.favorites.remove(pk_val)
+                else:
+                    st.session_state.favorites.add(pk_val)
+                st.rerun()
 
-        if view_df.empty:
-            st.warning("데이터가 없습니다.")
-        else:
-            if 'idx' not in st.session_state: st.session_state.idx = 0
-            st.session_state.idx = st.session_state.idx % len(view_df)
-            row = view_df.iloc[st.session_state.idx]
-            
-            st.caption(f"{row['과목']} > {row['대카테고리']}")
-            st.title(f"{row['개념']}")
-            
-            c1, c2 = st.columns([3, 2])
-            with c1:
-                st.info(str(row['내용']).replace("\\n", "\n"))
-            with c2:
-                if row['이미지URL'] and row['이미지URL'] != "-":
-                    st.image(row['이미지URL'], use_container_width=True)
-
-            st.divider()
-
-            # --- 관련 기출문제 자동 매칭 ---
-            current_pk = str(row['PK']).strip()
-            # 기출문제 탭의 PK 열과 매칭 (사용자 시트 컬럼명 기준)
-            related_quizzes = df_quiz[df_quiz['PK'].astype(str).str.contains(current_pk, na=False)]
-
-            if not related_quizzes.empty:
-                with st.expander(f"📝 관련 기출문제 ({len(related_quizzes)}개)", expanded=True):
-                    for _, q in related_quizzes.iterrows():
-                        year = q.get('기출문제(출제년도)', '연도미상')
-                        question = q.get('기출문제 (질문)', q.get('기출문제(질문)', '질문 없음'))
-                        st.markdown(f"**[{year}]** {question}")
-                        st.divider()
-
-            # 하단 네비게이션
-            bn1, bn2, bn3 = st.columns([1, 2, 1])
-            with bn1:
-                if st.button("⬅️ 이전"): st.session_state.idx -= 1; st.rerun()
-            with b2:
-                st.markdown(f"<h3 style='text-align: center;'>{st.session_state.idx + 1} / {len(view_df)}</h3>", unsafe_allow_html=True)
-            with b3:
-                if st.button("다음 ➡️"): st.session_state.idx += 1; st.rerun()
-
-    else:
-        st.title("📝 전체 기출문제 목록")
-        st.dataframe(df_quiz)
-
-except Exception as e:
-    st.error(f"데이터를 불러올 수 없습니다.")
-    st.write(f"오류 원인: {e}")
-    st.info("구글 시트의 [개념] 탭 GID가 0이 맞는지 확인해 주세요.")
+        # 개념 내용 및 이미지
+        st.write(row['내용'])
+        
+        # 이미지 컬럼이 있고 데이터가 있는 경우만 출력
+        if '이미지' in row and pd.notna(row['이미지']):
+            st.image(row['이미지'], caption=f"{row['개념']} 관련 이미지")
+        
+        # 기출문제 토글 (PK-FK 연동)
+        # 구글 시트 내에서 같은 시트 혹은 다른 시트의 데이터를 FK로 조회
+        # 여기서는 동일 시트 내에 기출 정보가 있다고 가정
+        with st.expander("📝 해당 기출문제 확인하기"):
+            if pd.notna(row['기출문제 (질문)']):
+                st.write(f"**[{row['기출문제(출제년도)']}]**")
+                st.write(row['기출문제 (질문)'])
+                st.caption(row['기출문제 (보기)'])
+                st.success(f"정답: {row['정답']}")
+            else:
+                st.write("연결된 기출문제가 없습니다.")
+        
+        st.divider()
