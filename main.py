@@ -1,6 +1,30 @@
 import streamlit as st
 import pandas as pd
 import uuid
+import datetime
+import gspread
+from google.oauth2.service_account import Credentials
+
+# --------------------------------------------------
+# Google Sheet 연결
+# --------------------------------------------------
+SCOPE = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=SCOPE
+)
+
+gc = gspread.authorize(creds)
+
+SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
+sheet = gc.open_by_key(SPREADSHEET_ID)
+
+fav_sheet = sheet.worksheet("favorites")
+
 
 # --------------------------------------------------
 # 1. 앱 설정
@@ -69,6 +93,20 @@ if "user_id" not in st.session_state:
 
 USER_ID = st.session_state.user_id
 
+# --------------------------------------------------
+# 저장된 즐겨찾기 불러오기
+# --------------------------------------------------
+records = fav_sheet.get_all_records()
+
+user_favs = {
+    str(r["PK"])
+    for r in records
+    if r["user_id"] == USER_ID
+}
+
+st.session_state.favorites = user_favs
+
+
 
 # --------------------------------------------------
 # 5. 상단 로고
@@ -121,15 +159,28 @@ else:
 
         with col_heart:
             if st.button(
-                "💛" if is_fav else "🤍",
-                key=f"fav_{pk}_{idx}",
-                help="즐겨찾기",
-            ):
-                if is_fav:
-                    st.session_state.favorites.remove(pk)
-                else:
-                    st.session_state.favorites.add(pk)
-                st.rerun()
+    "💛" if is_fav else "🤍",
+    key=f"fav_{pk}_{idx}",
+):
+    now = datetime.datetime.now().isoformat()
+
+    if is_fav:
+        # 삭제
+        cells = fav_sheet.findall(pk)
+        for c in cells:
+            if fav_sheet.cell(c.row, 1).value == USER_ID:
+                fav_sheet.delete_rows(c.row)
+                break
+
+        st.session_state.favorites.remove(pk)
+
+    else:
+        # 저장
+        fav_sheet.append_row([USER_ID, pk, now])
+        st.session_state.favorites.add(pk)
+
+    st.rerun()
+
 
         with col_title:
             st.markdown(
