@@ -158,10 +158,8 @@ else:
         col_heart, col_title = st.columns([0.05, 0.95])
 
         with col_heart:
-            if st.button(
-    "💛" if is_fav else "🤍",
-    key=f"fav_{pk}_{idx}",
-):
+            if st.button("💛" if is_fav else "🤍",
+    key=f"fav_{pk}_{idx}",):
     now = datetime.datetime.now().isoformat()
 
     if is_fav:
