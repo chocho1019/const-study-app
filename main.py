@@ -69,6 +69,34 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+--------------------------------------------------
+# 6. 사이드바 필터
+# --------------------------------------------------
+st.sidebar.title("🔍 학습 필터")
+
+sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
+view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "💛 즐겨찾기만"])
+
+filtered_df = df.copy()
+
+for col, label in [
+    ("과목", "과목"),
+    ("대카테고리", "대카테고리"),
+    ("소카테고리", "소카테고리"),
+]:
+    if col in filtered_df.columns:
+        options = ["전체"] + sorted(filtered_df[col].dropna().unique())
+        sel = st.sidebar.selectbox(f"{label} 선택", options)
+        if sel != "전체":
+            filtered_df = filtered_df[filtered_df[col] == sel]
+
+if view_mode == "💛 즐겨찾기만":
+    filtered_df = filtered_df[filtered_df["PK"].isin(st.session_state.favorites)]
+
+if sort_by_freq and "빈출" in filtered_df.columns:
+    filtered_df = filtered_df.sort_values("빈출", ascending=False)
+
+
 # --------------------------------------------------
 # 6. 메인 화면
 # --------------------------------------------------
