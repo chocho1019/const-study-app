@@ -1,13 +1,14 @@
+
 import streamlit as st
 import pandas as pd
 
 # 1. 앱 설정
-st.set_page_config(page_title="2025 건축기사 마스터", layout="wide")
+st.set_page_config(page_title="2026 초카이브 건축기사 필기", layout="wide")
 
 # 2. 스타일 설정
 st.markdown("""
     <style>
-    .concept-title { font-size: 24px; font-weight: bold; color: #2E4053; }
+    .concept-title { font-size: 10px; font-weight: bold; color: #2E4053; }
     .stButton button { width: 100%; }
     hr { margin: 1.5rem 0; }
     </style>
@@ -75,7 +76,7 @@ if df is not None:
         filtered_df = filtered_df.sort_values(by='빈출', ascending=False)
 
     # --- 메인 화면 ---
-    st.title("🏗️ 건축기사 필기 요약노트")
+    st.title("🏗️ 초카이브 건축기사 필기")
     
     if filtered_df.empty:
         st.info("조건에 맞는 데이터가 없습니다. 필터를 조정해 보세요.")
@@ -109,14 +110,13 @@ if df is not None:
             # 기출문제 토글 (수정하신 열 이름 반영)
             with st.expander("📝 관련 기출문제 확인"):
                 # 시트에서 수정한 '기출문제(질문)' 열 이름을 확인합니다.
-                q_col = '기출문제(질문)' if '기출문제(질문)' in df.columns else '기출문제 (질문)'
+                q_col = '문제' if '문제' in df.columns else '문제)'
                 
                 if q_col in row and pd.notna(row[q_col]):
-                    year = row['기출문제(출제년도)'] if '기출문제(출제년도)' in row else "연도 미상"
+                    year = row['년도'] if '년도' in row else "년도 미상"
                     st.info(f"**[{year} 출제]**\n\n{row[q_col]}")
                     
-                    if '기출문제(보기)' in row: st.write(f"보기: {row['기출문제(보기)']}")
-                    if '정답' in row: st.success(f"정답: {row['정답']}")
+                    if '보기' in row: st.write(f"보기: {row['보기']}")
                 else:
                     st.write("연결된 기출문제가 없습니다.")
             
