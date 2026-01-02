@@ -13,17 +13,27 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. 데이터 로드 함수
-@st.cache_data
+
+
+# 3. 데이터 로드 함수 (개선됨)
+@st.cache_data(ttl=600)  # 10분마다 캐시 갱신
 def load_data(url):
     try:
-        # 데이터 로드 후 모든 열 이름의 공백을 제거하여 일치시킴
-        df = pd.read_csv(url)
-        df.columns = [col.strip() for col in df.columns]
+        # csv 변환 주소 확인
+        csv_url = url.replace('/edit?gid=', '/export?format=csv&gid=')
+        df = pd.read_csv(csv_url)
+        
+        # 모든 컬럼명의 앞뒤 공백 제거 및 문자열화
+        df.columns = [str(col).strip() for col in df.columns]
+        
+        # 데이터프레임 전체의 문자열 앞뒤 공백 제거
+        df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
         return df
     except Exception as e:
         st.error(f"데이터 로드 실패: {e}")
         return None
+
+
 
 # 구글 시트 CSV 링크
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv"
