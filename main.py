@@ -135,13 +135,12 @@ else:
 
                 question_block = f"""
 **[{year} 출제]**  
-{row['기출문제(질문)']}
+**Q.{row['기출문제(질문)']}**
 """
 
                 if pd.notna(row.get("기출문제(보기)")):
                     question_block += f"""
-
-**보기**  
+  
 {row['기출문제(보기)']}
 """
 
