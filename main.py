@@ -96,18 +96,14 @@ else:
                 unsafe_allow_html=True
             )
 
-        
-     with col_fav:
-    is_fav = pk in st.session_state.favorites
-    if st.button("💛" if is_fav else "🤍", key=f"fav_{pk}"):
-        if is_fav:
-            st.session_state.favorites.remove(pk)
-        else:
-            st.session_state.favorites.add(pk)
-        st.rerun()
-
-
-        
+        with col_fav:
+            is_fav = pk in st.session_state.favorites
+            if st.button("💛" if is_fav else "🤍", key=f"fav_{pk}"):
+                if is_fav:
+                    st.session_state.favorites.remove(pk)
+                else:
+                    st.session_state.favorites.add(pk)
+                st.rerun()
 
         if pd.notna(row.get("내용")):
             st.write(row["내용"])
