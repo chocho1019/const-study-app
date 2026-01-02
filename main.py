@@ -13,23 +13,27 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. 데이터 로드 함수 (가장 안정적인 주소 방식 사용)
+# 3. 데이터 로드 함수 (오류가 났던 주소 체계를 가장 안정적인 형식으로 수정)
 @st.cache_data
 def load_full_data():
+    # 시트 ID는 그대로 유지
     SHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
-    # export?format=csv&gid=... 형식이 가장 에러가 적습니다.
+    
+    # 구글 시트에서 권장하는 가장 표준적인 CSV 내보내기 주소입니다.
     concept_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
     quiz_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=46086374"
     
+    # 데이터를 읽어옵니다.
     concept_df = pd.read_csv(concept_url)
     quiz_df = pd.read_csv(quiz_url)
     
-    # 공백 제거 및 PK/FK 타입 통일
+    # 열 이름의 공백을 제거하여 매칭 에러 방지
     concept_df.columns = [c.strip() for c in concept_df.columns]
     quiz_df.columns = [c.strip() for c in quiz_df.columns]
     
     return concept_df, quiz_df
 
+# 데이터 로드 실행
 concept_df, quiz_df = load_full_data()
 
 if concept_df is not None:
@@ -42,7 +46,7 @@ if concept_df is not None:
     
     f_df = concept_df.copy()
     
-    # 과목/대/소 카테고리 필터링
+    # 위계별 필터링
     for col in ['과목', '대카테고리', '소카테고리']:
         if col in f_df.columns:
             options = ["전체"] + sorted(f_df[col].dropna().unique().tolist())
@@ -57,7 +61,8 @@ if concept_df is not None:
     st.title("🏗️ 건축기사 필기 요약노트")
     
     for _, row in f_df.iterrows():
-        pk_val = str(row['PK']) # 매칭을 위해 문자열로 변환
+        # PK와 FK를 대조하기 위해 문자열로 통일
+        pk_val = str(row['PK'])
         
         # 제목 및 즐겨찾기
         c1, c2 = st.columns([0.9, 0.1])
@@ -70,26 +75,28 @@ if concept_df is not None:
                 else: st.session_state.favorites.add(pk_val)
                 st.rerun()
         
-        # 내용 및 이미지
+        # 상세 내용
         st.write(row['내용'])
+        
+        # 이미지 (있는 경우만)
         if '이미지' in row and pd.notna(row['이미지']) and str(row['이미지']).startswith('http'):
             st.image(row['이미지'], use_container_width=True)
             
-        # 🌟 기출문제 연동 (요청하신 3가지 항목만 표시)
+        # 🌟 기출문제 연동 (3가지 항목만 표시)
         with st.expander("📝 해당 기출문제 확인"):
-            # quiz_df의 FK와 concept_df의 PK를 비교
+            # 기출문제 시트의 FK와 개념 시트의 PK를 비교하여 필터링
             matched_quiz = quiz_df[quiz_df['FK'].astype(str) == pk_val]
             
             if not matched_quiz.empty:
                 for q_idx, q_row in matched_quiz.iterrows():
-                    # 1. 출제년도
-                    st.markdown(f"**📅 출제년도: {q_row.get('기출문제(출제년도)', '정보없음')}**")
-                    # 2. 질문
+                    # 1. 출제년도 (강조)
+                    st.markdown(f"**📅 출제년도: {q_row.get('기출문제(출제년도)', '연도 정보 없음')}**")
+                    # 2. 질문 (박스 형태)
                     st.info(f"❓ {q_row.get('기출문제(질문)', '질문 정보가 없습니다.')}")
                     # 3. 보기
                     st.write(f"📋 {q_row.get('기출문제(보기)', '보기가 없습니다.')}")
                     
-                    # 문제 사이 구분선
+                    # 문제 사이 구분선 (여러 문제일 경우)
                     if q_idx < matched_quiz.index[-1]:
                         st.markdown("---")
             else:
