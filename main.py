@@ -13,7 +13,7 @@ SHEET_ID = '1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g'
 # 예: 개념 시트가 gid=0, 기출 시트가 gid=12345 라면 아래 숫자를 바꿔주세요.
 # 주신 링크의 gid=46086374를 '개념 시트'라고 가정했습니다. 기출문제 시트의 gid도 확인해서 넣어주세요.
 CONCEPT_GID = '46086374' 
-QUESTION_GID = '0' # <--- [중요] 기출문제 시트의 GID로 꼭 변경해주세요!
+QUESTION_GID = '775019664' # <--- [중요] 기출문제 시트의 GID로 꼭 변경해주세요!
 
 # 2. 열 이름 매핑 (시트의 1행 헤더와 똑같아야 함)
 COL_CONFIG = {
