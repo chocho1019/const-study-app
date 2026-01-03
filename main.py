@@ -289,7 +289,7 @@ elif view_mode == "🃏 암기카드":
     with col_r:
         if st.button("다음 ➡", disabled=(i == total - 1), use_container_width=True):
             st.session_state.card_index += 1
-            st.rerun())
+            st.rerun()
 
 # ==================================================
 # 📚 전체 학습 / 즐겨찾기
