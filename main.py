@@ -72,19 +72,19 @@ st.markdown("""
 
 /* 상단 로고 스타일 수정 */
 .app-logo {
-    font-size: 16px;         /* 14px -> 16px로 확대 */
-    font-weight: 700;         /* 글자 두께 강화 */
-    color: #5F6368;           /* 더 진한 회색으로 변경 */
+    font-size: 12px;         
+    font-weight: 300;         
+    color: #f8f9fa;           
     text-align: right;
     margin-bottom: 0.5rem;
 }
 
 /* 카테고리 경로 스타일 수정 */
 .concept-category {
-    font-size: 13px;         /* 12px -> 13px로 확대 */
-    font-weight: 500;         /* 약간의 두께감 추가 */
-    color: #546E7A;           /* 청회색 계열로 변경하여 가독성 향상 */
-    margin-bottom: 8px;       /* 하단 간격 약간 증가 */
+    font-size: 14px;        
+    font-weight: 400;         
+    color: #7F8C8D;          
+    margin-bottom: 8px;      
 }
 
 .concept-title {
