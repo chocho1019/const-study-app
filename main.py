@@ -36,6 +36,12 @@ st.set_page_config(page_title="2025 건축기사 마스터", layout="wide")
 # --------------------------------------------------
 st.markdown("""
 <style>
+/* 모바일에서 컬럼 가로 정렬 강제 유지 */
+[data-testid="column"] {
+    min-width: 0px !important;
+    flex-basis: fit-content !important;
+}
+
 .app-logo {
     font-size: 14px;
     font-weight: 500;
@@ -48,14 +54,13 @@ st.markdown("""
     font-size: 24px;
     font-weight: bold;
     color: #2E4053;
+    line-height: 1.2;
 }
 
-.heart-btn button {
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: 22px;
-    cursor: pointer;
+/* 버튼 내부 여백 조절 */
+.stButton button {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
 }
 
 hr { margin: 1.5rem 0; }
@@ -199,67 +204,56 @@ if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
 # ==================================================
-# 🃏 암기카드 모드
+# 🃏 암기카드 모드 (기출문제 제거 + 하단 버튼 배치)
 # ==================================================
 elif view_mode == "🃏 암기카드":
-
     total = len(filtered_df)
     i = st.session_state.card_index
     row = filtered_df.iloc[i]
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 네비게이션
-    col_l, col_c, col_r = st.columns([1, 2, 1])
+    # 1. 상단: 즐겨찾기 버튼과 개념 제목
+    col_h, col_t = st.columns([0.1, 0.9])
+    with col_h:
+        if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
+            now = datetime.datetime.now().isoformat()
+            if is_fav:
+                cells = fav_sheet.findall(pk)
+                for c in cells:
+                    if fav_sheet.cell(c.row, 1).value == USER_ID:
+                        fav_sheet.delete_rows(c.row)
+                        break
+                st.session_state.favorites.remove(pk)
+            else:
+                fav_sheet.append_row([USER_ID, pk, now])
+                st.session_state.favorites.add(pk)
+            st.rerun()
+    with col_t:
+        st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
+
+    # 2. 중간: 개념 내용 (기출문제는 여기서 삭제됨)
+    if pd.notna(row.get("내용")):
+        st.write(row["내용"])
+    
+    # 3. 하단: 네비게이션 버튼 (내용 아래에 배치)
+    st.write("") # 여백
+    st.divider()
+    col_l, col_c, col_r = st.columns([1, 1, 1])
 
     with col_l:
-        if st.button("⬅ 이전", disabled=(i == 0)):
+        if st.button("⬅ 이전", disabled=(i == 0), use_container_width=True):
             st.session_state.card_index -= 1
             st.rerun()
 
+    with col_c:
+        # 현재 페이지 표시
+        st.markdown(f"<p style='text-align: center; line-height: 2.2; font-weight: bold;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
+
     with col_r:
-        if st.button("다음 ➡", disabled=(i == total - 1)):
+        if st.button("다음 ➡", disabled=(i == total - 1), use_container_width=True):
             st.session_state.card_index += 1
             st.rerun()
-
-    st.caption(f"{i + 1} / {total}")
-
-    # 즐겨찾기
-    if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
-        now = datetime.datetime.now().isoformat()
-
-        if is_fav:
-            cells = fav_sheet.findall(pk)
-            for c in cells:
-                if fav_sheet.cell(c.row, 1).value == USER_ID:
-                    fav_sheet.delete_rows(c.row)
-                    break
-            st.session_state.favorites.remove(pk)
-        else:
-            fav_sheet.append_row([USER_ID, pk, now])
-            st.session_state.favorites.add(pk)
-
-        st.rerun()
-
-    # 개념
-    st.markdown(
-        f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>",
-        unsafe_allow_html=True
-    )
-
-    if pd.notna(row.get("내용")):
-        st.write(row["내용"])
-
-    with st.expander("📝 관련 기출문제 확인"):
-        if pd.notna(row.get("기출문제(질문)")):
-            year = row.get("기출문제(출제년도)", "연도 미상")
-            st.markdown(f"**[{year}]** Q. {row['기출문제(질문)']}")
-            if pd.notna(row.get("기출문제(보기)")):
-                st.write(row["기출문제(보기)"])
-            if pd.notna(row.get("정답")):
-                st.success(f"정답: {row['정답']}")
-        else:
-            st.write("연결된 기출문제가 없습니다.")
 
 # ==================================================
 # 📚 전체 학습 / 즐겨찾기
