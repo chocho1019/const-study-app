@@ -223,23 +223,33 @@ else:
         if pd.notna(row.get("내용")):
             st.write(row["내용"])
 
-        # 📝 기출문제 (파란 박스 안 디자인 수정 버전)
+       # 📝 기출문제 (HTML 렌더링 수정 버전)
         with st.expander("📝 관련 기출문제 확인"):
             if pd.notna(row.get("기출문제(질문)")):
                 year = row.get("기출문제(출제년도)", "연도 미상")
 
-                # 1. 파란 박스 안에 들어갈 전체 텍스트를 HTML로 구성
-                # 연도 부분만 회색, 0.75배 크기, 굵게 설정
+                # 1. 스타일이 적용된 전체 컨텐츠 구성
+                # 파란색 박스 효과를 위해 div 스타일을 직접 지정합니다.
                 year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
-                question_text = f"**Q. {row['기출문제(질문)']}**"
+                question_text = f"<div style='margin-top: 10px; font-weight: bold; color: #004085;'>Q. {row['기출문제(질문)']}</div>"
                 
-                full_content = f"{year_style}<br><br>{question_text}"
-                
+                options_text = ""
                 if pd.notna(row.get("기출문제(보기)")):
-                    full_content += f"\n\n{row['기출문제(보기)']}"
+                    # 보기가 있다면 줄바꿈을 적용하여 추가
+                    options_content = str(row['기출문제(보기)']).replace("\n", "<br>")
+                    options_text = f"<div style='margin-top: 10px; color: #004085;'>{options_content}</div>"
                 
-                # 2. st.info(파란 박스) 출력
-                st.info(full_content)
+                # 전체를 하나로 묶어서 파란 박스(st.info 스타일)처럼 만듦
+                full_html = f"""
+                <div style="background-color: #e7f3fe; border-left: 5px solid #2196F3; padding: 15px; border-radius: 5px;">
+                    {year_style}
+                    {question_text}
+                    {options_text}
+                </div>
+                """
+                
+                # 2. HTML 허용 옵션과 함께 출력 (이게 핵심입니다!)
+                st.markdown(full_html, unsafe_allow_html=True)
 
                 if pd.notna(row.get("정답")):
                     st.success(f"정답: {row['정답']}")
