@@ -247,8 +247,9 @@ if st.sidebar.button("로그아웃"):
 if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
+
 # ==================================================
-# 🃏 암기카드 모드 (카테고리/하트/내용 전체 통합 박스)
+# 🃏 암기카드 모드 (하트/카테고리/제목/내용 완전 통합)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -257,20 +258,32 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 데이터를 변수에 할당
-    cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
-    title_text = row.get('개념','제목 없음')
-    content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
-    fav_icon = "💛" if is_fav else "🤍"
+    # 1. 상단에 하트 조작용 실제 버튼 (투명하게 처리하여 박스 위 위치)
+    # CSS를 통해 버튼을 박스 안쪽 우측 상단으로 보냅니다.
+    st.markdown("""
+        <style>
+        .fav-container {
+            position: relative;
+            z-index: 10;
+            float: right;
+            margin-bottom: -45px; /* 박스 안으로 밀어넣기 */
+            margin-right: 10px;
+        }
+        .stButton>button[key^="card_fav"] {
+            background-color: transparent !important;
+            border: none !important;
+            font-size: 24px !important;
+            padding: 0 !important;
+            width: 40px !important;
+            height: 40px !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # 2. 전체를 하나의 HTML 박스로 구성 (하트는 버튼 대신 텍스트 효과로 상단 배치)
-    # 버튼 기능을 유지하기 위해 하트 버튼만 박스 바로 위에 배치하거나, 
-    # 박스 내부에 '열'을 나누지 않고 HTML로만 짭니다.
-    
-    # [방법] 상단에 하트 버튼을 배치하고, 바로 아래 붙여서 카테고리~내용 박스 출력
-    col_fav, _ = st.columns([0.1, 0.9])
-    with col_fav:
-        if st.button(fav_icon, key=f"card_fav_{pk}"):
+    # 하트 버튼 배치
+    col_empty, col_fav_btn = st.columns([0.9, 0.1])
+    with col_fav_btn:
+        if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
             if is_fav:
                 cells = fav_sheet.findall(pk)
@@ -284,17 +297,21 @@ elif view_mode == "🃏 암기카드":
                 st.session_state.favorites.add(pk)
             st.rerun()
 
-    # 카테고리, 제목, 내용을 하나의 회색 박스 안에 넣기
+    # 2. 메인 개념 박스 (카테고리 + 제목 + 내용)
+    cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
+    title_text = row.get('개념','제목 없음')
+    content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
+    
     card_html = f"""
     <div class="concept-card">
-        <div class="concept-category">{cat_text}</div>
+        <div class="concept-category" style="margin-right: 40px;">{cat_text}</div>
         <div class="concept-title-card">{title_text}</div>
         <div class="concept-content-card">{content_text}</div>
     </div>
     """
     st.markdown(card_html, unsafe_allow_html=True)
 
-    # 3. 관련 기출문제 (기존 유지)
+    # 3. 관련 기출문제 확인 (박스 외부 하단)
     with st.expander("📝 관련 기출문제 확인"):
         if pd.notna(row.get("기출문제(질문)")):
             year = row.get("기출문제(출제년도)", "연도 미상")
@@ -308,10 +325,11 @@ elif view_mode == "🃏 암기카드":
             
             full_html = f'<div class="q-box">{year_style}{question_text}{options_text}</div>'
             st.markdown(full_html, unsafe_allow_html=True)
+
             if pd.notna(row.get("정답")):
                 st.success(f"정답: {row['정답']}")
 
-    # 4. 하단 네비게이션
+    # 4. 하단 네비게이션 버튼
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
     with col_l:
