@@ -32,57 +32,39 @@ fav_sheet = sheet.worksheet("favorites")
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일
+# 2. 스타일 수정
 # --------------------------------------------------
 
 st.markdown("""
 <style>
-/* 모바일에서 컬럼 가로 정렬 강제 유지 */
-[data-testid="column"] {
-    min-width: 0px !important;
-    flex-basis: fit-content !important;
+/* ... 기존 코드 유지 ... */
+
+/* [추가] 개념 카드 배경 (빨간색 줄 친 부분) */
+.concept-card {
+    background-color: #f9f9f9; /* 아주 연한 회색 */
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 10px;
 }
 
-.app-logo {
-    font-size: 14px;
-    font-weight: 500;
-    color: #9aa0a6;
-    text-align: right;
-    margin-bottom: 1rem;
-}
-
-.concept-category {
-    font-size: 12px;
-    color: #7F8C8D;
-    margin-bottom: 4px;
-}
-
-.concept-title {
-    font-size: 24px;
+/* [추가] 미니멀 네비게이션 숫자 스타일 */
+.nav-text {
+    text-align: center;
+    line-height: 2.2;
     font-weight: bold;
-    color: #2E4053;
-    line-height: 1.2;
-    margin-bottom: 15px; /* 제목 아래 간격 확보 */
+    font-size: 16px;
+    color: #333;
 }
 
-/* 기출문제 박스 위쪽 간격 추가 */
-.q-box {
-    background-color: #e7f3fe; 
-    border-left: 5px solid #2196F3; 
-    padding: 15px; 
-    border-radius: 5px;
-    margin-top: 20px; /* 개념 내용과의 간격 확보 */
-}
-
-/* 버튼 내부 여백 조절 */
+/* 버튼 스타일 최적화 (더 작게) */
 .stButton button {
     width: 100%;
-    padding: 0.25rem 0.5rem;
+    padding: 0.2rem !important;
+    font-size: 14px !important;
 }
-
-hr { margin: 1.5rem 0; }
 </style>
 """, unsafe_allow_html=True)
+
 
 # --------------------------------------------------
 # 3. 데이터 로드
@@ -221,7 +203,7 @@ if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
 # ==================================================
-# 🃏 암기카드 모드 (카테고리 표시 + 클릭 필터 추가)
+# 🃏 암기카드 모드 (배경색 + 미니멀 네비게이션)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -230,12 +212,14 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 최상단: 카테고리 정보 표시 (클릭 시 필터링)
+    # 1. 최상단 카테고리 (카드 밖)
     cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
     st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
 
-    # 2. 상단: 즐겨찾기 버튼과 개념 제목
-    col_h, col_t = st.columns([0.1, 0.9])
+    # 2. 카드 시작 (연회색 배경 영역)
+    st.markdown('<div class="concept-card">', unsafe_allow_html=True)
+    
+    col_h, col_t = st.columns([0.15, 0.85])
     with col_h:
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
@@ -253,25 +237,25 @@ elif view_mode == "🃏 암기카드":
     with col_t:
         st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-    # 3. 중간: 개념 내용
     if pd.notna(row.get("내용")):
         st.write(row["내용"])
     
-    # 4. 하단: 네비게이션 버튼
-    st.write("") 
-    st.divider()
-    col_l, col_c, col_r = st.columns([1, 1, 1])
+    st.markdown('</div>', unsafe_allow_html=True) # 카드 끝
 
-    with col_l:
-        if st.button("⬅ 이전", disabled=(i == 0), use_container_width=True):
+    # 3. 미니멀 네비게이션 (< 1 / 89 > 형태)
+    st.write("") 
+    col_prev, col_page, col_next = st.columns([0.2, 0.6, 0.2])
+
+    with col_prev:
+        if st.button("＜", disabled=(i == 0), use_container_width=True):
             st.session_state.card_index -= 1
             st.rerun()
 
-    with col_c:
-        st.markdown(f"<p style='text-align: center; line-height: 2.2; font-weight: bold;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
+    with col_page:
+        st.markdown(f"<div class='nav-text'>{i + 1} / {total}</div>", unsafe_allow_html=True)
 
-    with col_r:
-        if st.button("다음 ➡", disabled=(i == total - 1), use_container_width=True):
+    with col_next:
+        if st.button("＞", disabled=(i == total - 1), use_container_width=True):
             st.session_state.card_index += 1
             st.rerun()
 
