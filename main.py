@@ -37,12 +37,10 @@ st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout=
 
 st.markdown("""
 <style>
-/* 모바일에서 컬럼 가로 정렬 강제 유지 및 여백 최소화 */
+/* 모바일에서 컬럼 가로 정렬 강제 유지 */
 [data-testid="column"] {
     min-width: 0px !important;
     flex-basis: fit-content !important;
-    padding-left: 5px !important;
-    padding-right: 5px !important;
 }
 
 .app-logo {
@@ -59,38 +57,27 @@ st.markdown("""
     margin-bottom: 4px;
 }
 
-/* 페이지 번호: 연한 회색 스타일 */
-.page-number {
-    text-align: center;
-    line-height: 2.2;
-    font-weight: bold;
-    color: #BDC3C7; /* 연한 회색 */
-    font-size: 14px;
-    margin: 0;
-}
-
 .concept-title {
     font-size: 24px;
     font-weight: bold;
     color: #2E4053;
     line-height: 1.2;
-    margin-bottom: 15px;
+    margin-bottom: 15px; /* 제목 아래 간격 확보 */
 }
 
+/* 기출문제 박스 위쪽 간격 추가 */
 .q-box {
     background-color: #e7f3fe; 
     border-left: 5px solid #2196F3; 
     padding: 15px; 
     border-radius: 5px;
-    margin-top: 20px;
+    margin-top: 20px; /* 개념 내용과의 간격 확보 */
 }
 
-/* 버튼 스타일 최적화 (글자 크기 축소 및 여백 제거) */
+/* 버튼 내부 여백 조절 */
 .stButton button {
     width: 100%;
-    padding: 0.25rem 0.2rem !important;
-    font-size: 13px !important;
-    white-space: nowrap !important;
+    padding: 0.25rem 0.5rem;
 }
 
 hr { margin: 1.5rem 0; }
@@ -234,7 +221,7 @@ if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
 # ==================================================
-# 🃏 암기카드 모드 (네비게이션 한 줄 최적화)
+# 🃏 암기카드 모드 (카테고리 표시 + 클릭 필터 추가)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -243,12 +230,12 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 최상단: 카테고리 정보 표시
+    # 1. 최상단: 카테고리 정보 표시 (클릭 시 필터링)
     cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
     st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
 
     # 2. 상단: 즐겨찾기 버튼과 개념 제목
-    col_h, col_t = st.columns([0.15, 0.85])
+    col_h, col_t = st.columns([0.1, 0.9])
     with col_h:
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
@@ -270,12 +257,10 @@ elif view_mode == "🃏 암기카드":
     if pd.notna(row.get("내용")):
         st.write(row["내용"])
     
-    # 4. 하단: 네비게이션 버튼 (한 줄 정렬 최적화)
+    # 4. 하단: 네비게이션 버튼
     st.write("") 
     st.divider()
-    
-    # 컬럼 비율을 조정하여 버튼이 들어갈 공간 확보
-    col_l, col_c, col_r = st.columns([1.2, 1, 1.2])
+    col_l, col_c, col_r = st.columns([1, 1, 1])
 
     with col_l:
         if st.button("⬅ 이전", disabled=(i == 0), use_container_width=True):
@@ -283,8 +268,7 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
     with col_c:
-        # 스타일에서 정의한 page-number 클래스 적용 (연한 회색)
-        st.markdown(f"<p class='page-number'>{i + 1} / {total}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; line-height: 2.2; font-weight: bold;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
 
     with col_r:
         if st.button("다음 ➡", disabled=(i == total - 1), use_container_width=True):
