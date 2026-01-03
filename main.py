@@ -138,11 +138,15 @@ st.markdown(
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
 
+# [추가된 기능] 빈출도 관련 필터
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
+only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만") # 신규 추가
+
 view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "💛 즐겨찾기만"])
 
 filtered_df = df.copy()
 
+# 1. 일반 카테고리 필터링
 for col, label in [
     ("과목", "과목"),
     ("대카테고리", "대카테고리"),
@@ -154,13 +158,22 @@ for col, label in [
         if sel != "전체":
             filtered_df = filtered_df[filtered_df[col] == sel]
 
+# 2. 즐겨찾기 필터링
 if view_mode == "💛 즐겨찾기만":
     filtered_df = filtered_df[filtered_df["PK"].isin(st.session_state.favorites)]
 
-if sort_by_freq and "빈출" in filtered_df.columns:
-    filtered_df = filtered_df.sort_values("빈출", ascending=False)
+# 3. [신규] 3번 이상 빈출 필터링 로직
+if only_high_freq and "빈출" in filtered_df.columns:
+    # 빈출 컬럼을 숫자로 변환 후 3 이상인 것만 남김
+    filtered_df["빈출_num"] = pd.to_numeric(filtered_df["빈출"], errors='coerce').fillna(0)
+    filtered_df = filtered_df[filtered_df["빈출_num"] >= 3]
 
-st.sidebar.caption(f"USER ID: {USER_ID[:8]}...")
+# 4. 빈출도 정렬 로직
+if sort_by_freq and "빈출" in filtered_df.columns:
+    # 정렬을 위해 임시로 숫자 변환 (이미 위에서 했다면 재사용)
+    if "빈출_num" not in filtered_df.columns:
+        filtered_df["빈출_num"] = pd.to_numeric(filtered_df["빈출"], errors='coerce').fillna(0)
+    filtered_df = filtered_df.sort_values("빈출_num", ascending=False)
 
 # --------------------------------------------------
 # 7. 메인 화면 (⚠️ filtered_df 사용)
