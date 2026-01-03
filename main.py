@@ -37,6 +37,15 @@ st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout=
 
 st.markdown("""
 <style>
+/* 페이지 표시 글자 스타일 추가 (연한 회색) */
+.nav-text {
+    text-align: center; 
+    line-height: 2.4; 
+    font-weight: bold; 
+    font-size: 16px;
+    color: #bdc3c7; /* 연한 회색 */
+}
+
 /* 암기카드 전용 배경 박스 */
 .concept-card {
     background-color: #f8f9fa; /* 연한 회색 */
@@ -246,8 +255,9 @@ if st.sidebar.button("로그아웃"):
 if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
+
 # ==================================================
-# 🃏 암기카드 모드 (카테고리 표시 + 클릭 필터 추가)
+# 🃏 암기카드 모드 (수정본)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -256,13 +266,17 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 최상단: 카테고리 정보 표시 (클릭 시 필터링)
+    # --- 회색 박스 시작 ---
+    # 박스 상단과 카테고리 표시
     cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
-    st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
-
- # 2. 즐겨찾기 버튼 (박스 위로 분리)
-    col_h, _ = st.columns([0.1, 0.9])
-    with col_h:
+    st.markdown(f"""
+        <div class="concept-card">
+            <div class='concept-category'>{cat_text}</div>
+    """, unsafe_allow_html=True)
+    
+    # 하트 버튼 배치 (컬럼을 사용하여 박스 내부처럼 보이게 함)
+    col_fav, _ = st.columns([0.1, 0.9])
+    with col_fav:
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
             if is_fav:
@@ -276,21 +290,18 @@ elif view_mode == "🃏 암기카드":
                 fav_sheet.append_row([USER_ID, pk, now])
                 st.session_state.favorites.add(pk)
             st.rerun()
-
-    # 3. 개념 박스 (제목과 내용을 하나의 박스로 묶음)
+    
+    # 제목과 내용 출력 후 박스 닫기(</div>)
     title_text = row.get('개념','제목 없음')
     content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
-    
-    # 배경 박스가 끊기지 않도록 하나의 HTML로 합쳐서 출력합니다.
-    card_html = f"""
-    <div class="concept-card">
-        <div class="concept-title-card">{title_text}</div>
-        <div class="concept-content-card">{content_text}</div>
-    </div>
-    """
-    st.markdown(card_html, unsafe_allow_html=True)
-    
-    # 4. 하단 네비게이션 버튼 (미니멀 화살표 스타일)
+    st.markdown(f"""
+            <div class="concept-title-card" style="margin-top:5px;">{title_text}</div>
+            <div class="concept-content-card">{content_text}</div>
+        </div>
+    """, unsafe_allow_html=True)
+    # --- 회색 박스 끝 ---
+
+    # 4. 하단 네비게이션 버튼
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
 
@@ -300,13 +311,15 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
     with col_c:
-        # 카페 스타일 숫자 표시
-        st.markdown(f"<p style='text-align: center; line-height: 2.4; font-weight: bold; font-size: 16px;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
+        # 페이지 표시 글자 스타일 적용 (nav-text 클래스 사용)
+        st.markdown(f"<div class='nav-text'>{i + 1} / {total}</div>", unsafe_allow_html=True)
 
     with col_r:
         if st.button("＞", disabled=(i == total - 1), use_container_width=True):
             st.session_state.card_index += 1
             st.rerun()
+
+
 
 # ==================================================
 # 📚 전체 학습 / 즐겨찾기
