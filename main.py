@@ -29,11 +29,12 @@ fav_sheet = sheet.worksheet("favorites")
 # --------------------------------------------------
 # 1. 앱 설정
 # --------------------------------------------------
-st.set_page_config(page_title="2025 건축기사 마스터", layout="wide")
+st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
 # 2. 스타일
 # --------------------------------------------------
+
 st.markdown("""
 <style>
 /* 모바일에서 컬럼 가로 정렬 강제 유지 */
@@ -50,11 +51,27 @@ st.markdown("""
     margin-bottom: 1rem;
 }
 
+.concept-category {
+    font-size: 12px;
+    color: #7F8C8D;
+    margin-bottom: 4px;
+}
+
 .concept-title {
     font-size: 24px;
     font-weight: bold;
     color: #2E4053;
     line-height: 1.2;
+    margin-bottom: 15px; /* 제목 아래 간격 확보 */
+}
+
+/* 기출문제 박스 위쪽 간격 추가 */
+.q-box {
+    background-color: #e7f3fe; 
+    border-left: 5px solid #2196F3; 
+    padding: 15px; 
+    border-radius: 5px;
+    margin-top: 20px; /* 개념 내용과의 간격 확보 */
 }
 
 /* 버튼 내부 여백 조절 */
@@ -118,7 +135,7 @@ USER_ID = st.session_state.user_id
 # 5. 상단 로고 (여기에 다시 추가합니다)
 # --------------------------------------------------
 st.markdown(
-    "<div class='app-logo'>🏗️ 건축기사 필기노트 made by. 초카이브</div>",
+    "<div class='app-logo'>🏗️ 건축기사 필기노트 by. 초카이브</div>",
     unsafe_allow_html=True
 )
 
@@ -204,7 +221,7 @@ if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
 # ==================================================
-# 🃏 암기카드 모드 (기출문제 제거 + 하단 버튼 배치)
+# 🃏 암기카드 모드 (카테고리 표시 + 클릭 필터 추가)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -213,7 +230,11 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 상단: 즐겨찾기 버튼과 개념 제목
+    # 1. 최상단: 카테고리 정보 표시 (클릭 시 필터링)
+    cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
+    st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
+
+    # 2. 상단: 즐겨찾기 버튼과 개념 제목
     col_h, col_t = st.columns([0.1, 0.9])
     with col_h:
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
@@ -232,12 +253,12 @@ elif view_mode == "🃏 암기카드":
     with col_t:
         st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-    # 2. 중간: 개념 내용 (기출문제는 여기서 삭제됨)
+    # 3. 중간: 개념 내용
     if pd.notna(row.get("내용")):
         st.write(row["내용"])
     
-    # 3. 하단: 네비게이션 버튼 (내용 아래에 배치)
-    st.write("") # 여백
+    # 4. 하단: 네비게이션 버튼
+    st.write("") 
     st.divider()
     col_l, col_c, col_r = st.columns([1, 1, 1])
 
@@ -247,7 +268,6 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
     with col_c:
-        # 현재 페이지 표시
         st.markdown(f"<p style='text-align: center; line-height: 2.2; font-weight: bold;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
 
     with col_r:
@@ -292,37 +312,31 @@ else:
             st.write(row["내용"])
 
 
-        # 📝 기출문제 (HTML 렌더링 수정 버전)
+        # 📝 기출문제 (간격 수정 버전)
         with st.expander("📝 관련 기출문제 확인"):
             if pd.notna(row.get("기출문제(질문)")):
                 year = row.get("기출문제(출제년도)", "연도 미상")
-
-                # 1. 스타일이 적용된 전체 컨텐츠 구성
-                # 파란색 박스 효과를 위해 div 스타일을 직접 지정합니다.
                 year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
                 question_text = f"<div style='margin-top: 10px; font-weight: bold; color: #004085;'>Q. {row['기출문제(질문)']}</div>"
                 
                 options_text = ""
                 if pd.notna(row.get("기출문제(보기)")):
-                    # 보기가 있다면 줄바꿈을 적용하여 추가
                     options_content = str(row['기출문제(보기)']).replace("\n", "<br>")
                     options_text = f"<div style='margin-top: 10px; color: #004085;'>{options_content}</div>"
                 
-                # 전체를 하나로 묶어서 파란 박스(st.info 스타일)처럼 만듦
+                # q-box 클래스를 사용하여 상단 마진(간격) 부여
                 full_html = f"""
-                <div style="background-color: #e7f3fe; border-left: 5px solid #2196F3; padding: 15px; border-radius: 5px;">
+                <div class="q-box">
                     {year_style}
                     {question_text}
                     {options_text}
                 </div>
                 """
-                
-                # 2. HTML 허용 옵션과 함께 출력 (이게 핵심입니다!)
                 st.markdown(full_html, unsafe_allow_html=True)
 
                 if pd.notna(row.get("정답")):
+                    st.write("") # 정답 박스 앞 여백
                     st.success(f"정답: {row['정답']}")
-            else:
-                st.write("연결된 기출문제가 없습니다.")
+
                 
         st.divider()
