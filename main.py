@@ -221,7 +221,7 @@ if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
 # ==================================================
-# 🃏 암기카드 모드 (카테고리 표시 + 클릭 필터 추가)
+# 🃏 암기카드 모드 (네비게이션 한 줄 최적화)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -230,12 +230,12 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 최상단: 카테고리 정보 표시 (클릭 시 필터링)
+    # 1. 최상단: 카테고리 정보 표시
     cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
     st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
 
     # 2. 상단: 즐겨찾기 버튼과 개념 제목
-    col_h, col_t = st.columns([0.1, 0.9])
+    col_h, col_t = st.columns([0.15, 0.85])
     with col_h:
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
@@ -257,10 +257,12 @@ elif view_mode == "🃏 암기카드":
     if pd.notna(row.get("내용")):
         st.write(row["내용"])
     
-    # 4. 하단: 네비게이션 버튼
+    # 4. 하단: 네비게이션 버튼 (한 줄 정렬 최적화)
     st.write("") 
     st.divider()
-    col_l, col_c, col_r = st.columns([1, 1, 1])
+    
+    # 컬럼 비율을 조정하여 버튼이 들어갈 공간 확보
+    col_l, col_c, col_r = st.columns([1.2, 1, 1.2])
 
     with col_l:
         if st.button("⬅ 이전", disabled=(i == 0), use_container_width=True):
@@ -268,12 +270,13 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
     with col_c:
-        st.markdown(f"<p style='text-align: center; line-height: 2.2; font-weight: bold;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
+        # 스타일에서 정의한 page-number 클래스 적용 (연한 회색)
+        st.markdown(f"<p class='page-number'>{i + 1} / {total}</p>", unsafe_allow_html=True)
 
     with col_r:
         if st.button("다음 ➡", disabled=(i == total - 1), use_container_width=True):
             st.session_state.card_index += 1
-            st.rerun()
+            st.rerun())
 
 # ==================================================
 # 📚 전체 학습 / 즐겨찾기
