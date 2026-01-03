@@ -141,7 +141,8 @@ st.sidebar.title("🔍 학습 필터")
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
 only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
 
-view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "💛 즐겨찾기만"])
+view_mode = st.sidebar.radio("모드 선택",["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"]
+)
 
 filtered_df = df.copy()
 
@@ -167,6 +168,19 @@ if sort_by_freq and "빈출" in filtered_df.columns:
     filtered_df = filtered_df.sort_values("빈출_num", ascending=False)
 
 # --------------------------------------------------
+# 🃏 암기카드 세션 상태 초기화 (★ 반드시 필요)
+# --------------------------------------------------
+if "card_index" not in st.session_state:
+    st.session_state.card_index = 0
+
+if "show_answer" not in st.session_state:
+    st.session_state.show_answer = False
+
+# 카드 셔플용 (필터 바뀌면 다시 생성)
+if "card_order" not in st.session_state:
+    st.session_state.card_order = None
+
+# --------------------------------------------------
 # 7. 사용자 인증 정보 (사이드바 하단 배치)
 # --------------------------------------------------
 st.sidebar.markdown("---")
@@ -174,6 +188,84 @@ st.sidebar.write(f"👤 **로그인 정보**: {USER_ID}")
 if st.sidebar.button("로그아웃"):
     del st.session_state.user_id
     st.rerun()
+
+# --------------------------------------------------
+# 🃏 암기카드 모드
+# --------------------------------------------------
+if view_mode == "🃏 암기카드":
+
+    if filtered_df.empty:
+        st.info("암기카드로 볼 개념이 없습니다.")
+        st.stop()
+
+    # 카드 순서 생성 (필터 기준 1회 셔플)
+    if st.session_state.card_order is None:
+        st.session_state.card_order = (
+            filtered_df.sample(frac=1).reset_index(drop=True)
+        )
+
+    cards = st.session_state.card_order
+    idx = st.session_state.card_index % len(cards)
+    row = cards.iloc[idx]
+
+    pk = row["PK"]
+    is_fav = pk in st.session_state.favorites
+
+    st.markdown("## 🃏 암기카드")
+
+    # 카드 UI
+    st.markdown(
+        f"""
+        <div style="
+            background-color:#ffffff;
+            border-radius:14px;
+            padding:40px;
+            box-shadow:0 6px 16px rgba(0,0,0,0.12);
+            min-height:220px;
+        ">
+            <h3 style="color:#2E4053;">{row.get('개념','')}</h3>
+            <hr>
+            {
+                f"<p>{row.get('내용','')}</p>"
+                if st.session_state.show_answer
+                else "<p style='color:#aaa;'>정답을 확인하세요</p>"
+            }
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("👁️ 정답 보기 / 숨기기"):
+            st.session_state.show_answer = not st.session_state.show_answer
+            st.rerun()
+
+    with col2:
+        if st.button("⏭️ 다음 카드"):
+            st.session_state.card_index += 1
+            st.session_state.show_answer = False
+            st.rerun()
+
+    with col3:
+        if st.button("💛" if is_fav else "🤍"):
+            now = datetime.datetime.now().isoformat()
+            if is_fav:
+                cells = fav_sheet.findall(pk)
+                for c in cells:
+                    if fav_sheet.cell(c.row, 1).value == USER_ID:
+                        fav_sheet.delete_rows(c.row)
+                        break
+                st.session_state.favorites.remove(pk)
+            else:
+                fav_sheet.append_row([USER_ID, pk, now])
+                st.session_state.favorites.add(pk)
+            st.rerun()
+
+    # ⛔ 아래 기존 전체 학습 화면으로 내려가지 않게 차단
+    st.stop()
+
 
 # --------------------------------------------------
 # 7. 메인 화면 (⚠️ filtered_df 사용)
