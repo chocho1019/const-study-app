@@ -110,6 +110,14 @@ if not user_email or user_email not in ALLOWED_EMAILS:
 USER_ID = st.session_state.user_id
 
 # --------------------------------------------------
+# 5. 상단 로고 (여기에 다시 추가합니다)
+# --------------------------------------------------
+st.markdown(
+    "<div class='app-logo'>🏗️ 건축기사 [필기] 요약노트 made by. 초카이브</div>",
+    unsafe_allow_html=True
+)
+
+# --------------------------------------------------
 # 5. 저장된 즐겨찾기 불러오기
 # --------------------------------------------------
 if "favorites" not in st.session_state or st.session_state.get('last_user') != USER_ID:
