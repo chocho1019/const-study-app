@@ -70,18 +70,21 @@ st.markdown("""
     flex-basis: fit-content !important;
 }
 
+/* 상단 로고 스타일 수정 */
 .app-logo {
-    font-size: 14px;
-    font-weight: 500;
-    color: #9aa0a6;
+    font-size: 16px;         /* 14px -> 16px로 확대 */
+    font-weight: 700;         /* 글자 두께 강화 */
+    color: #5F6368;           /* 더 진한 회색으로 변경 */
     text-align: right;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
 }
 
+/* 카테고리 경로 스타일 수정 */
 .concept-category {
-    font-size: 12px;
-    color: #7F8C8D;
-    margin-bottom: 4px;
+    font-size: 13px;         /* 12px -> 13px로 확대 */
+    font-weight: 500;         /* 약간의 두께감 추가 */
+    color: #546E7A;           /* 청회색 계열로 변경하여 가독성 향상 */
+    margin-bottom: 8px;       /* 하단 간격 약간 증가 */
 }
 
 .concept-title {
@@ -162,7 +165,7 @@ USER_ID = st.session_state.user_id
 # 5. 상단 로고 (여기에 다시 추가합니다)
 # --------------------------------------------------
 st.markdown(
-    "<div class='app-logo'>ⓒ초카이브</div>",
+    "<div class='app-logo'>ⓒ초카이브 건축기사</div>",
     unsafe_allow_html=True
 )
 
