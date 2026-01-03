@@ -123,12 +123,6 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
     except:
         st.session_state.favorites = set()
 
-# --------------------------------------------------
-# 5. 상단 로고
-# --------------------------------------------------
-st.markdown(
-    "<div class='app-logo'>🏗️ 건축기사 필기 요약노트 made by. 초카이브</div>",
-    unsafe_allow_html=True
     
 # --------------------------------------------------
 # 6. 사이드바 필터 (상단 배치)
