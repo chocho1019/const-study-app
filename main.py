@@ -248,7 +248,7 @@ if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
 # ==================================================
-# 🃏 암기카드 모드 (카테고리 표시 + 클릭 필터 추가)
+# 🃏 암기카드 모드 (배경 박스 내부에 카테고리/하트 포함)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -257,13 +257,22 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 최상단: 카테고리 정보 표시 (클릭 시 필터링)
-    cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
-    st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
-
- # 2. 즐겨찾기 버튼 (박스 위로 분리)
-    col_h, _ = st.columns([0.1, 0.9])
-    with col_h:
+    # 1. 회색 배경 박스 시작 (HTML)
+    # 카테고리, 하트, 제목, 내용을 모두 감쌉니다.
+    st.markdown('<div class="concept-card">', unsafe_allow_html=True)
+    
+    # 2. 박스 내부 최상단: 카테고리와 하트 버튼 배치
+    # 비율을 0.88 : 0.12 정도로 나누어 하트가 오른쪽 끝에 붙게 합니다.
+    col_t, col_f = st.columns([0.88, 0.12])
+    
+    with col_t:
+        cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
+        st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
+        # 제목
+        st.markdown(f"<div class='concept-title-card'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
+        
+    with col_f:
+        # 하트 버튼
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
             if is_fav:
@@ -278,20 +287,32 @@ elif view_mode == "🃏 암기카드":
                 st.session_state.favorites.add(pk)
             st.rerun()
 
-    # 3. 개념 박스 (제목과 내용을 하나의 박스로 묶음)
-    title_text = row.get('개념','제목 없음')
+    # 3. 박스 내부 하단: 내용 표시
     content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
+    st.markdown(f"<div class='concept-content-card'>{content_text}</div>", unsafe_allow_html=True)
     
-    # 배경 박스가 끊기지 않도록 하나의 HTML로 합쳐서 출력합니다.
-    card_html = f"""
-    <div class="concept-card">
-        <div class="concept-title-card">{title_text}</div>
-        <div class="concept-content-card">{content_text}</div>
-    </div>
-    """
-    st.markdown(card_html, unsafe_allow_html=True)
-    
-    # 4. 하단 네비게이션 버튼 (미니멀 화살표 스타일)
+    # 회색 배경 박스 닫기
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 4. 관련 기출문제 (박스 바로 아래 배치)
+    with st.expander("📝 관련 기출문제 확인"):
+        if pd.notna(row.get("기출문제(질문)")):
+            year = row.get("기출문제(출제년도)", "연도 미상")
+            year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
+            question_text = f"<div style='margin-top: 10px; font-weight: bold; color: #004085;'>Q. {row['기출문제(질문)']}</div>"
+            
+            options_text = ""
+            if pd.notna(row.get("기출문제(보기)")):
+                options_content = str(row['기출문제(보기)']).replace("\n", "<br>")
+                options_text = f"<div style='margin-top: 10px; color: #004085;'>{options_content}</div>"
+            
+            full_html = f'<div class="q-box">{year_style}{question_text}{options_text}</div>'
+            st.markdown(full_html, unsafe_allow_html=True)
+
+            if pd.notna(row.get("정답")):
+                st.success(f"정답: {row['정답']}")
+
+    # 5. 하단 네비게이션 버튼 (이전/이후)
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
 
@@ -301,8 +322,7 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
     with col_c:
-        # 카페 스타일 숫자 표시
-        st.markdown(f"<p style='text-align: center; line-height: 2.4; font-weight: bold; font-size: 16px;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; line-height: 2.4; font-weight: bold; font-size: 16px; color: #D3D3D3;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
 
     with col_r:
         if st.button("＞", disabled=(i == total - 1), use_container_width=True):
