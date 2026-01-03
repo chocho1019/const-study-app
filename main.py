@@ -32,60 +32,83 @@ fav_sheet = sheet.worksheet("favorites")
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 수정
+# 2. 스타일
 # --------------------------------------------------
+
 st.markdown("""
 <style>
-/* 모바일 전체 배경 및 폰트 최적화 */
-.stApp { background-color: white; }
-
-/* 개념 카드 영역: 아주 연한 회색 배경 */
+/* 암기카드 전용 배경 박스 */
 .concept-card {
-    background-color: #f8f9fa; 
-    padding: 18px;
+    background-color: #f8f9fa; /* 연한 회색 */
+    padding: 20px;
     border-radius: 12px;
-    border: 1px solid #eeeeee;
+    border: 1px solid #eee;
+    margin-bottom: 20px;
+}
+
+/* 박스 안의 제목 스타일 */
+.concept-title-card {
+    font-size: 22px;
+    font-weight: bold;
+    color: #2E4053;
     margin-bottom: 15px;
+}
+
+/* 박스 안의 내용 스타일 */
+.concept-content-card {
+    font-size: 16px;
+    color: #333;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+
+/* 모바일에서 컬럼 가로 정렬 강제 유지 */
+[data-testid="column"] {
+    min-width: 0px !important;
+    flex-basis: fit-content !important;
+}
+
+.app-logo {
+    font-size: 14px;
+    font-weight: 500;
+    color: #9aa0a6;
+    text-align: right;
+    margin-bottom: 1rem;
 }
 
 .concept-category {
     font-size: 12px;
-    color: #888888;
-    margin-bottom: 8px;
+    color: #7F8C8D;
+    margin-bottom: 4px;
 }
 
 .concept-title {
-    font-size: 20px;
-    font-weight: 800;
-    color: #2C3E50;
-    margin-bottom: 12px;
-}
-
-.concept-content {
-    font-size: 15px;
-    color: #34495E;
-    line-height: 1.6;
-    white-space: pre-wrap; /* 줄바꿈 유지 */
-}
-
-/* 네비게이션 숫자 */
-.nav-text {
-    text-align: center;
+    font-size: 24px;
     font-weight: bold;
-    font-size: 16px;
-    margin-top: 10px;
+    color: #2E4053;
+    line-height: 1.2;
+    margin-bottom: 15px; /* 제목 아래 간격 확보 */
 }
 
-/* 버튼 크기 슬림화 */
-.stButton button {
-    border-radius: 8px !important;
-    padding: 0.3rem !important;
-    background-color: white !important;
-    border: 1px solid #ddd !important;
+/* 기출문제 박스 위쪽 간격 추가 */
+.q-box {
+    background-color: #e7f3fe; 
+    border-left: 5px solid #2196F3; 
+    padding: 15px; 
+    border-radius: 5px;
+    margin-top: 20px; /* 개념 내용과의 간격 확보 */
 }
+
+/* 버튼 내부 여백 조절 */
+.stButton button {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+}
+
+hr { margin: 1.5rem 0; }
 </style>
 """, unsafe_allow_html=True)
-
 
 # --------------------------------------------------
 # 3. 데이터 로드
@@ -224,7 +247,7 @@ if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
 # ==================================================
-# 🃏 암기카드 모드 (수정 완료)
+# 🃏 암기카드 모드 (카테고리 표시 + 클릭 필터 추가)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -233,13 +256,13 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 카테고리 정보
+    # 1. 최상단: 카테고리 정보 표시 (클릭 시 필터링)
     cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
     st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
 
-    # 2. 즐겨찾기 버튼 (카드 바로 위 배치)
-    col_fav, _ = st.columns([0.2, 0.8])
-    with col_fav:
+ # 2. 즐겨찾기 버튼 (박스 위로 분리)
+    col_h, _ = st.columns([0.1, 0.9])
+    with col_h:
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
             if is_fav:
@@ -254,38 +277,36 @@ elif view_mode == "🃏 암기카드":
                 st.session_state.favorites.add(pk)
             st.rerun()
 
-    # 3. 개념 카드 (배경색 박스 안에 제목과 내용을 한꺼번에 삽입)
-    content_html = f"""
+    # 3. 개념 박스 (제목과 내용을 하나의 박스로 묶음)
+    title_text = row.get('개념','제목 없음')
+    content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
+    
+    # 배경 박스가 끊기지 않도록 하나의 HTML로 합쳐서 출력합니다.
+    card_html = f"""
     <div class="concept-card">
-        <div class="concept-title">{row.get('개념','제목 없음')}</div>
-        <div class="concept-content">{row.get('내용','내용 없음')}</div>
+        <div class="concept-title-card">{title_text}</div>
+        <div class="concept-content-card">{content_text}</div>
     </div>
     """
-    st.markdown(content_html, unsafe_allow_html=True)
-
-    # 4. 미니멀 네비게이션 (카페 스타일)
+    st.markdown(card_html, unsafe_allow_html=True)
+    
+    # 4. 하단 네비게이션 버튼 (미니멀 화살표 스타일)
     st.write("") 
-    col_prev, col_page, col_next = st.columns([1, 1, 1])
+    col_l, col_c, col_r = st.columns([1, 1, 1])
 
-    with col_prev:
+    with col_l:
         if st.button("＜", disabled=(i == 0), use_container_width=True):
             st.session_state.card_index -= 1
             st.rerun()
 
-    with col_page:
-        st.markdown(f"<div class='nav-text'>{i + 1} / {total}</div>", unsafe_allow_html=True)
+    with col_c:
+        # 카페 스타일 숫자 표시
+        st.markdown(f"<p style='text-align: center; line-height: 2.4; font-weight: bold; font-size: 16px;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
 
-    with col_next:
+    with col_r:
         if st.button("＞", disabled=(i == total - 1), use_container_width=True):
             st.session_state.card_index += 1
             st.rerun()
-
-    # 5. 관련 기출문제 (카드 밖 하단에 배치)
-    with st.expander("📝 관련 기출문제 확인"):
-        if pd.notna(row.get("기출문제(질문)")):
-            st.info(f"Q. {row['기출문제(질문)']}")
-            if pd.notna(row.get("정답")):
-                st.success(f"정답: {row['정답']}")
 
 # ==================================================
 # 📚 전체 학습 / 즐겨찾기
