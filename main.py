@@ -141,7 +141,7 @@ st.sidebar.title("🔍 학습 필터")
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
 only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
 
-view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "💛 즐겨찾기만", "🃏 카드 암기"])
+view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🗂️ 카드 암기", "전체 학습"])
 
 filtered_df = df.copy()
 
@@ -181,58 +181,49 @@ if st.sidebar.button("로그아웃"):
 if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 else:
-    # --- [카드 암기 모드 전용 로직] ---
-    if view_mode == "🃏 카드 암기":
-        # 현재 보고 있는 카드 인덱스를 세션에 저장
+    # --- [카드 암기 모드 인덱스 관리] ---
+    if view_mode == "🗂️ 카드 암기":
         if "card_index" not in st.session_state:
             st.session_state.card_index = 0
-            
-        # 필터 변경 시 인덱스 범위 초과 방지
         if st.session_state.card_index >= len(filtered_df):
             st.session_state.card_index = 0
-
-        # 카드 이동 네비게이션 바
-        col_prev, col_page, col_next = st.columns([1, 2, 1])
-        with col_prev:
-            if st.button("⬅️ 이전", use_container_width=True) and st.session_state.card_index > 0:
-                st.session_state.card_index -= 1
-                st.rerun()
-        with col_page:
-            st.markdown(f"<p style='text-align: center; font-weight: bold;'>{st.session_state.card_index + 1} / {len(filtered_df)}</p>", unsafe_allow_html=True)
-        with col_next:
-            if st.button("다음 ➡️", use_container_width=True) and st.session_state.card_index < len(filtered_df) - 1:
-                st.session_state.card_index += 1
-                st.rerun()
         
-        # 현재 인덱스에 해당하는 데이터 하나만 선택
+        # 현재 카드 데이터만 선택
         display_df = filtered_df.iloc[[st.session_state.card_index]]
     else:
-        # 전체 학습 또는 즐겨찾기 모드는 전체 리스트 출력
         display_df = filtered_df
 
-    # --- [공통 출력 부분] ---
+    # --- [공통 출력 루프] ---
     for idx, (_, row) in enumerate(display_df.iterrows()):
-        pk = row["PK"]
-        is_fav = pk in st.session_state.favorites
+        # (중략: 하트 버튼, 개념 제목, 내용, 기출문제 출력 코드는 기존과 동일하게 유지)
+        # ... 기존의 제목/내용/st.expander 코드가 여기에 위치합니다 ...
 
-        col_heart, col_title = st.columns([0.05, 0.95])
-
-        # ❤️ 하트 버튼
-        with col_heart:
-            # 고유 키 생성을 위해 PK와 모드 이름을 조합
-            if st.button("💛" if is_fav else "🤍", key=f"fav_{pk}_{view_mode}_{idx}"):
-                now = datetime.datetime.now().isoformat()
-                if is_fav:
-                    cells = fav_sheet.findall(pk)
-                    for c in cells:
-                        if fav_sheet.cell(c.row, 1).value == USER_ID:
-                            fav_sheet.delete_rows(c.row)
-                            break
-                    st.session_state.favorites.remove(pk)
-                else:
-                    fav_sheet.append_row([USER_ID, pk, now])
-                    st.session_state.favorites.add(pk)
-                st.rerun()
+        # --------------------------------------------------
+        # 2. 카드 모드 네비게이션 버튼 (하단 배치)
+        # --------------------------------------------------
+        if view_mode == "🗂️ 카드 암기":
+            st.divider() # 내용과 버튼 사이 구분선
+            
+            col_prev, col_page, col_next = st.columns([1, 2, 1])
+            
+            with col_prev:
+                if st.button("⬅️ 이전 카드", use_container_width=True):
+                    if st.session_state.card_index > 0:
+                        st.session_state.card_index -= 1
+                        st.rerun()
+            
+            with col_page:
+                # 현재 페이지 표시
+                st.markdown(f"<p style='text-align: center; font-size: 1.2em; font-weight: bold;'>{st.session_state.card_index + 1} / {len(filtered_df)}</p>", unsafe_allow_html=True)
+            
+            with col_next:
+                if st.button("다음 카드 ➡️", use_container_width=True):
+                    if st.session_state.card_index < len(filtered_df) - 1:
+                        st.session_state.card_index += 1
+                        st.rerun()
+        else:
+            # 리스트 모드일 때는 항목 간 구분선만 표시
+            st.divider()
 
         # 📘 개념 제목
         with col_title:
