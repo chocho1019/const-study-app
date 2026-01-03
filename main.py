@@ -174,7 +174,6 @@ st.sidebar.write(f"👤 **로그인 정보**: {USER_ID}")
 if st.sidebar.button("로그아웃"):
     del st.session_state.user_id
     st.rerun()
-
 # --------------------------------------------------
 # 7. 메인 화면 (모드별 분기 처리)
 # --------------------------------------------------
@@ -198,8 +197,8 @@ else:
         pk = row["PK"]
         is_fav = pk in st.session_state.favorites
 
-        # 🌟 여기서 col_heart와 col_title을 정의해줘야 에러가 나지 않습니다.
-        col_heart, col_title = st.columns([0.05, 0.95])
+        # 레이아웃 설정 (하트와 제목)
+        col_heart, col_title = st.columns([0.15, 0.85]) # 모바일 대응을 위해 하트 영역 소폭 확대
 
         # ❤️ 1. 하트 버튼
         with col_heart:
@@ -225,52 +224,52 @@ else:
         if pd.notna(row.get("내용")):
             st.write(row["내용"])
 
-        # 📝 4. 기출문제
-        with st.expander("📝 관련 기출문제 확인"):
-            if pd.notna(row.get("기출문제(질문)")):
-                year = row.get("기출문제(출제년도)", "연도 미상")
-                year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
-                question_text = f"<div style='margin-top: 10px; font-weight: bold; color: #004085;'>Q. {row['기출문제(질문)']}</div>"
-                
-                options_text = ""
-                if pd.notna(row.get("기출문제(보기)")):
-                    options_content = str(row['기출문제(보기)']).replace("\n", "<br>")
-                    options_text = f"<div style='margin-top: 10px; color: #004085;'>{options_content}</div>"
-                
-                full_html = f"""
-                <div style="background-color: #e7f3fe; border-left: 5px solid #2196F3; padding: 15px; border-radius: 5px;">
-                    {year_style} {question_text} {options_text}
-                </div>
-                """
-                st.markdown(full_html, unsafe_allow_html=True)
-
-                if pd.notna(row.get("정답")):
-                    st.success(f"정답: {row['정답']}")
-            else:
-                st.write("연결된 기출문제가 없습니다.")
+        # 📝 4. 기출문제 (카드 암기 모드가 아닐 때만 출력)
+        if view_mode != "🗂️ 카드 암기":
+            with st.expander("📝 관련 기출문제 확인"):
+                if pd.notna(row.get("기출문제(질문)")):
+                    year = row.get("기출문제(출제년도)", "연도 미상")
+                    year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
+                    question_text = f"<div style='margin-top: 10px; font-weight: bold; color: #004085;'>Q. {row['기출문제(질문)']}</div>"
+                    
+                    options_text = ""
+                    if pd.notna(row.get("기출문제(보기)")):
+                        options_content = str(row['기출문제(보기)']).replace("\n", "<br>")
+                        options_text = f"<div style='margin-top: 10px; color: #004085;'>{options_content}</div>"
+                    
+                    full_html = f"""
+                    <div style="background-color: #e7f3fe; border-left: 5px solid #2196F3; padding: 15px; border-radius: 5px;">
+                        {year_style} {question_text} {options_text}
+                    </div>
+                    """
+                    st.markdown(full_html, unsafe_allow_html=True)
+                    if pd.notna(row.get("정답")):
+                        st.success(f"정답: {row['정답']}")
+                else:
+                    st.write("연결된 기출문제가 없습니다.")
 
         # --------------------------------------------------
-        # 5. 카드 모드 네비게이션 버튼 (가장 하단 배치)
+        # 5. 카드 모드 네비게이션 버튼 (한 줄 배치)
         # --------------------------------------------------
         if view_mode == "🗂️ 카드 암기":
-            st.divider() # 내용과 버튼 사이 구분선
+            st.write("") # 약간의 간격
+            # 버튼과 페이지 번호를 한 줄에 배치 [이전(1) | 번호(1) | 다음(1)]
+            btn_col1, btn_col2, btn_col3 = st.columns([1, 1, 1])
             
-            col_prev, col_page, col_next = st.columns([1, 2, 1])
-            
-            with col_prev:
-                if st.button("⬅️ 이전 카드", use_container_width=True):
+            with btn_col1:
+                if st.button("⬅️ 이전", use_container_width=True, key="prev_btn"):
                     if st.session_state.card_index > 0:
                         st.session_state.card_index -= 1
                         st.rerun()
             
-            with col_page:
-                st.markdown(f"<p style='text-align: center; font-size: 1.2em; font-weight: bold;'>{st.session_state.card_index + 1} / {len(filtered_df)}</p>", unsafe_allow_html=True)
+            with btn_col2:
+                # 페이지 번호를 버튼 높이에 맞춰 중앙 정렬
+                st.markdown(f"<p style='text-align: center; line-height: 2.5; font-weight: bold;'>{st.session_state.card_index + 1} / {len(filtered_df)}</p>", unsafe_allow_html=True)
             
-            with col_next:
-                if st.button("다음 카드 ➡️", use_container_width=True):
+            with btn_col3:
+                if st.button("다음 ➡️", use_container_width=True, key="next_btn"):
                     if st.session_state.card_index < len(filtered_df) - 1:
                         st.session_state.card_index += 1
                         st.rerun()
-        else:
-            # 리스트 모드일 때는 항목 끝에만 구분선 표시
-            st.divider()
+        
+        st.divider()
