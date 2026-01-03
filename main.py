@@ -291,7 +291,7 @@ elif view_mode == "🃏 암기카드":
     """
     st.markdown(card_html, unsafe_allow_html=True)
     
-    # 4. 하단 네비게이션 버튼 (미니멀 화살표 스타일)
+    # 4. 하단 네비게이션 버튼 (가운데 숫자 색상 변경)
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
 
@@ -301,8 +301,15 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
     with col_c:
-        # 카페 스타일 숫자 표시
-        st.markdown(f"<p style='text-align: center; line-height: 2.4; font-weight: bold; font-size: 16px;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
+        # style 속성에 color: #D3D3D3(연한 회색)를 추가했습니다.
+        st.markdown(
+            f"""
+            <p style='text-align: center; line-height: 2.4; font-weight: bold; font-size: 16px; color: #D3D3D3;'>
+                {i + 1} / {total}
+            </p>
+            """, 
+            unsafe_allow_html=True
+        )
 
     with col_r:
         if st.button("＞", disabled=(i == total - 1), use_container_width=True):
