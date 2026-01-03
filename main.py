@@ -195,45 +195,37 @@ else:
 
     # --- [공통 출력 루프] ---
     for idx, (_, row) in enumerate(display_df.iterrows()):
-        # (중략: 하트 버튼, 개념 제목, 내용, 기출문제 출력 코드는 기존과 동일하게 유지)
-        # ... 기존의 제목/내용/st.expander 코드가 여기에 위치합니다 ...
+        pk = row["PK"]
+        is_fav = pk in st.session_state.favorites
 
-        # --------------------------------------------------
-        # 2. 카드 모드 네비게이션 버튼 (하단 배치)
-        # --------------------------------------------------
-        if view_mode == "🗂️ 카드 암기":
-            st.divider() # 내용과 버튼 사이 구분선
-            
-            col_prev, col_page, col_next = st.columns([1, 2, 1])
-            
-            with col_prev:
-                if st.button("⬅️ 이전 카드", use_container_width=True):
-                    if st.session_state.card_index > 0:
-                        st.session_state.card_index -= 1
-                        st.rerun()
-            
-            with col_page:
-                # 현재 페이지 표시
-                st.markdown(f"<p style='text-align: center; font-size: 1.2em; font-weight: bold;'>{st.session_state.card_index + 1} / {len(filtered_df)}</p>", unsafe_allow_html=True)
-            
-            with col_next:
-                if st.button("다음 카드 ➡️", use_container_width=True):
-                    if st.session_state.card_index < len(filtered_df) - 1:
-                        st.session_state.card_index += 1
-                        st.rerun()
-        else:
-            # 리스트 모드일 때는 항목 간 구분선만 표시
-            st.divider()
+        # 🌟 여기서 col_heart와 col_title을 정의해줘야 에러가 나지 않습니다.
+        col_heart, col_title = st.columns([0.05, 0.95])
 
-        # 📘 개념 제목
+        # ❤️ 1. 하트 버튼
+        with col_heart:
+            if st.button("💛" if is_fav else "🤍", key=f"fav_{pk}_{idx}"):
+                now = datetime.datetime.now().isoformat()
+                if is_fav:
+                    cells = fav_sheet.findall(pk)
+                    for c in cells:
+                        if fav_sheet.cell(c.row, 1).value == USER_ID:
+                            fav_sheet.delete_rows(c.row)
+                            break
+                    st.session_state.favorites.remove(pk)
+                else:
+                    fav_sheet.append_row([USER_ID, pk, now])
+                    st.session_state.favorites.add(pk)
+                st.rerun()
+
+        # 📘 2. 개념 제목
         with col_title:
             st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-        # 📄 내용
+        # 📄 3. 내용
         if pd.notna(row.get("내용")):
             st.write(row["내용"])
 
-        # 📝 기출문제 (기존 디자인 유지)
+        # 📝 4. 기출문제
         with st.expander("📝 관련 기출문제 확인"):
             if pd.notna(row.get("기출문제(질문)")):
                 year = row.get("기출문제(출제년도)", "연도 미상")
@@ -257,4 +249,28 @@ else:
             else:
                 st.write("연결된 기출문제가 없습니다.")
 
-        st.divider()
+        # --------------------------------------------------
+        # 5. 카드 모드 네비게이션 버튼 (가장 하단 배치)
+        # --------------------------------------------------
+        if view_mode == "🗂️ 카드 암기":
+            st.divider() # 내용과 버튼 사이 구분선
+            
+            col_prev, col_page, col_next = st.columns([1, 2, 1])
+            
+            with col_prev:
+                if st.button("⬅️ 이전 카드", use_container_width=True):
+                    if st.session_state.card_index > 0:
+                        st.session_state.card_index -= 1
+                        st.rerun()
+            
+            with col_page:
+                st.markdown(f"<p style='text-align: center; font-size: 1.2em; font-weight: bold;'>{st.session_state.card_index + 1} / {len(filtered_df)}</p>", unsafe_allow_html=True)
+            
+            with col_next:
+                if st.button("다음 카드 ➡️", use_container_width=True):
+                    if st.session_state.card_index < len(filtered_df) - 1:
+                        st.session_state.card_index += 1
+                        st.rerun()
+        else:
+            # 리스트 모드일 때는 항목 끝에만 구분선 표시
+            st.divider()
