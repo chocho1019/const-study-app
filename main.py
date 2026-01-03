@@ -113,7 +113,7 @@ USER_ID = st.session_state.user_id
 # 5. 상단 로고 (여기에 다시 추가합니다)
 # --------------------------------------------------
 st.markdown(
-    "<div class='app-logo'>🏗️ 건축기사 [필기] 요약노트 made by. 초카이브</div>",
+    "<div class='app-logo'>🏗️ 건축기사 필기노트 made by. 초카이브</div>",
     unsafe_allow_html=True
 )
 
