@@ -37,10 +37,12 @@ st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout=
 
 st.markdown("""
 <style>
-/* 모바일에서 컬럼 가로 정렬 강제 유지 */
+/* 모바일에서 컬럼 가로 정렬 강제 유지 및 여백 최소화 */
 [data-testid="column"] {
     min-width: 0px !important;
     flex-basis: fit-content !important;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
 }
 
 .app-logo {
@@ -57,27 +59,38 @@ st.markdown("""
     margin-bottom: 4px;
 }
 
+/* 페이지 번호: 연한 회색 스타일 */
+.page-number {
+    text-align: center;
+    line-height: 2.2;
+    font-weight: bold;
+    color: #BDC3C7; /* 연한 회색 */
+    font-size: 14px;
+    margin: 0;
+}
+
 .concept-title {
     font-size: 24px;
     font-weight: bold;
     color: #2E4053;
     line-height: 1.2;
-    margin-bottom: 15px; /* 제목 아래 간격 확보 */
+    margin-bottom: 15px;
 }
 
-/* 기출문제 박스 위쪽 간격 추가 */
 .q-box {
     background-color: #e7f3fe; 
     border-left: 5px solid #2196F3; 
     padding: 15px; 
     border-radius: 5px;
-    margin-top: 20px; /* 개념 내용과의 간격 확보 */
+    margin-top: 20px;
 }
 
-/* 버튼 내부 여백 조절 */
+/* 버튼 스타일 최적화 (글자 크기 축소 및 여백 제거) */
 .stButton button {
     width: 100%;
-    padding: 0.25rem 0.5rem;
+    padding: 0.25rem 0.2rem !important;
+    font-size: 13px !important;
+    white-space: nowrap !important;
 }
 
 hr { margin: 1.5rem 0; }
