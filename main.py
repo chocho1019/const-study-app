@@ -81,47 +81,45 @@ df_question = load_sheet(QUESTION_URL)
 df = df_concept.merge(df_question, on="PK", how="left")
 
 # --------------------------------------------------
-# 4. 세션 상태 및 이메일 로그인 (구글 시트 연동)
+# 4. 초기 사용자 인증 처리 (데이터 접근 제어)
 # --------------------------------------------------
-st.sidebar.title("🔐 사용자 인증")
-
 # 'users' 시트에서 허용된 이메일 목록 가져오기
 try:
     user_sheet = sheet.worksheet("users")
-    # A열의 모든 값을 가져온 뒤 첫 번째 제목(email) 제외
     ALLOWED_EMAILS = [e.strip() for e in user_sheet.col_values(1)[1:] if e.strip()]
 except Exception as e:
     st.error("구글 시트에 'users' 탭이 없거나 설정을 확인해주세요.")
     st.stop()
 
-# 이메일 입력창
-user_email = st.sidebar.text_input("등록된 이메일을 입력하세요", key="login_email").strip()
+# 세션에 저장된 이메일 확인
+user_email = st.session_state.get('user_id', "").strip()
 
-if not user_email:
+# 만약 로그인이 안 되어 있다면 로그인 창만 보여주고 중단
+if not user_email or user_email not in ALLOWED_EMAILS:
+    st.sidebar.title("🔐 사용자 인증")
+    input_email = st.sidebar.text_input("등록된 이메일을 입력하세요", key="login_input").strip()
+    if st.sidebar.button("로그인"):
+        if input_email in ALLOWED_EMAILS:
+            st.session_state.user_id = input_email
+            st.rerun()
+        else:
+            st.sidebar.error("등록되지 않은 이메일입니다.")
     st.info("👈 왼쪽 사이드바에서 이메일로 로그인하면 학습을 시작할 수 있습니다.")
     st.stop()
 
-if user_email in ALLOWED_EMAILS:
-    # 인증 성공 시 이메일을 USER_ID로 사용
-    USER_ID = user_email
-    st.session_state.user_id = USER_ID
-    st.sidebar.success(f"✅ 인증 완료: {USER_ID}")
-else:
-    st.sidebar.error("❌ 등록되지 않은 이메일입니다. 관리자에게 문의하세요.")
-    st.stop()
+USER_ID = st.session_state.user_id
 
 # --------------------------------------------------
-# 5. 저장된 즐겨찾기 불러오기 (로그인 후 실행)
+# 5. 저장된 즐겨찾기 불러오기
 # --------------------------------------------------
 if "favorites" not in st.session_state or st.session_state.get('last_user') != USER_ID:
-    # 현재 로그인한 사용자의 즐겨찾기만 필터링해서 세션에 저장
     try:
         records = fav_sheet.get_all_records()
         st.session_state.favorites = {
             str(r["PK"]) for r in records 
             if str(r["user_id"]).strip() == USER_ID
         }
-        st.session_state.last_user = USER_ID # 사용자 바뀜 감지용
+        st.session_state.last_user = USER_ID
     except:
         st.session_state.favorites = set()
 
@@ -131,49 +129,49 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
 st.markdown(
     "<div class='app-logo'>🏗️ 건축기사 [필기] 요약노트 made by. 초카이브</div>",
     unsafe_allow_html=True
-)
-
+    
 # --------------------------------------------------
-# 6. 사이드바 필터
+# 6. 사이드바 필터 (상단 배치)
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
 
-# [추가된 기능] 빈출도 관련 필터
+# 빈출도 관련 필터
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
-only_high_freq = st.sidebar.checkbox("🔥 [빈출] 3번 이상 출제") # 신규 추가
+only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
 
 view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "💛 즐겨찾기만"])
 
 filtered_df = df.copy()
 
-# 1. 일반 카테고리 필터링
-for col, label in [
-    ("과목", "과목"),
-    ("대카테고리", "대카테고리"),
-    ("소카테고리", "소카테고리"),
-]:
+# 카테고리 필터링
+for col, label in [("과목", "과목"), ("대카테고리", "대카테고리"), ("소카테고리", "소카테고리")]:
     if col in filtered_df.columns:
         options = ["전체"] + sorted(filtered_df[col].dropna().unique())
         sel = st.sidebar.selectbox(f"{label} 선택", options)
         if sel != "전체":
             filtered_df = filtered_df[filtered_df[col] == sel]
 
-# 2. 즐겨찾기 필터링
+# 필터 적용 로직 (즐겨찾기, 빈출도)
 if view_mode == "💛 즐겨찾기만":
     filtered_df = filtered_df[filtered_df["PK"].isin(st.session_state.favorites)]
 
-# 3. [신규] 3번 이상 빈출 필터링 로직
 if only_high_freq and "빈출" in filtered_df.columns:
-    # 빈출 컬럼을 숫자로 변환 후 3 이상인 것만 남김
     filtered_df["빈출_num"] = pd.to_numeric(filtered_df["빈출"], errors='coerce').fillna(0)
     filtered_df = filtered_df[filtered_df["빈출_num"] >= 3]
 
-# 4. 빈출도 정렬 로직
 if sort_by_freq and "빈출" in filtered_df.columns:
-    # 정렬을 위해 임시로 숫자 변환 (이미 위에서 했다면 재사용)
     if "빈출_num" not in filtered_df.columns:
         filtered_df["빈출_num"] = pd.to_numeric(filtered_df["빈출"], errors='coerce').fillna(0)
     filtered_df = filtered_df.sort_values("빈출_num", ascending=False)
+
+# --------------------------------------------------
+# 7. 사용자 인증 정보 (사이드바 하단 배치)
+# --------------------------------------------------
+st.sidebar.markdown("---")
+st.sidebar.write(f"👤 **로그인 정보**: {USER_ID}")
+if st.sidebar.button("로그아웃"):
+    del st.session_state.user_id
+    st.rerun()
 
 # --------------------------------------------------
 # 7. 메인 화면 (⚠️ filtered_df 사용)
