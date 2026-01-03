@@ -34,33 +34,54 @@ st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout=
 # --------------------------------------------------
 # 2. 스타일 수정
 # --------------------------------------------------
-
 st.markdown("""
 <style>
-/* ... 기존 코드 유지 ... */
+/* 모바일 전체 배경 및 폰트 최적화 */
+.stApp { background-color: white; }
 
-/* [추가] 개념 카드 배경 (빨간색 줄 친 부분) */
+/* 개념 카드 영역: 아주 연한 회색 배경 */
 .concept-card {
-    background-color: #f9f9f9; /* 아주 연한 회색 */
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 10px;
+    background-color: #f8f9fa; 
+    padding: 18px;
+    border-radius: 12px;
+    border: 1px solid #eeeeee;
+    margin-bottom: 15px;
 }
 
-/* [추가] 미니멀 네비게이션 숫자 스타일 */
+.concept-category {
+    font-size: 12px;
+    color: #888888;
+    margin-bottom: 8px;
+}
+
+.concept-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #2C3E50;
+    margin-bottom: 12px;
+}
+
+.concept-content {
+    font-size: 15px;
+    color: #34495E;
+    line-height: 1.6;
+    white-space: pre-wrap; /* 줄바꿈 유지 */
+}
+
+/* 네비게이션 숫자 */
 .nav-text {
     text-align: center;
-    line-height: 2.2;
     font-weight: bold;
     font-size: 16px;
-    color: #333;
+    margin-top: 10px;
 }
 
-/* 버튼 스타일 최적화 (더 작게) */
+/* 버튼 크기 슬림화 */
 .stButton button {
-    width: 100%;
-    padding: 0.2rem !important;
-    font-size: 14px !important;
+    border-radius: 8px !important;
+    padding: 0.3rem !important;
+    background-color: white !important;
+    border: 1px solid #ddd !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -203,7 +224,7 @@ if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
 # ==================================================
-# 🃏 암기카드 모드 (배경색 + 미니멀 네비게이션)
+# 🃏 암기카드 모드 (수정 완료)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -212,15 +233,13 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 최상단 카테고리 (카드 밖)
+    # 1. 카테고리 정보
     cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
     st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
 
-    # 2. 카드 시작 (연회색 배경 영역)
-    st.markdown('<div class="concept-card">', unsafe_allow_html=True)
-    
-    col_h, col_t = st.columns([0.15, 0.85])
-    with col_h:
+    # 2. 즐겨찾기 버튼 (카드 바로 위 배치)
+    col_fav, _ = st.columns([0.2, 0.8])
+    with col_fav:
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
             if is_fav:
@@ -234,17 +253,19 @@ elif view_mode == "🃏 암기카드":
                 fav_sheet.append_row([USER_ID, pk, now])
                 st.session_state.favorites.add(pk)
             st.rerun()
-    with col_t:
-        st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-    if pd.notna(row.get("내용")):
-        st.write(row["내용"])
-    
-    st.markdown('</div>', unsafe_allow_html=True) # 카드 끝
+    # 3. 개념 카드 (배경색 박스 안에 제목과 내용을 한꺼번에 삽입)
+    content_html = f"""
+    <div class="concept-card">
+        <div class="concept-title">{row.get('개념','제목 없음')}</div>
+        <div class="concept-content">{row.get('내용','내용 없음')}</div>
+    </div>
+    """
+    st.markdown(content_html, unsafe_allow_html=True)
 
-    # 3. 미니멀 네비게이션 (< 1 / 89 > 형태)
+    # 4. 미니멀 네비게이션 (카페 스타일)
     st.write("") 
-    col_prev, col_page, col_next = st.columns([0.2, 0.6, 0.2])
+    col_prev, col_page, col_next = st.columns([1, 1, 1])
 
     with col_prev:
         if st.button("＜", disabled=(i == 0), use_container_width=True):
@@ -258,6 +279,13 @@ elif view_mode == "🃏 암기카드":
         if st.button("＞", disabled=(i == total - 1), use_container_width=True):
             st.session_state.card_index += 1
             st.rerun()
+
+    # 5. 관련 기출문제 (카드 밖 하단에 배치)
+    with st.expander("📝 관련 기출문제 확인"):
+        if pd.notna(row.get("기출문제(질문)")):
+            st.info(f"Q. {row['기출문제(질문)']}")
+            if pd.notna(row.get("정답")):
+                st.success(f"정답: {row['정답']}")
 
 # ==================================================
 # 📚 전체 학습 / 즐겨찾기
