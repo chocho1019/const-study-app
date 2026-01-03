@@ -37,14 +37,16 @@ st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout=
 
 st.markdown("""
 <style>
-/* 페이지 표시 글자 스타일 추가 (연한 회색) */
+
+/* 페이지 표시 글자 스타일 (연한 회색) */
 .nav-text {
     text-align: center; 
     line-height: 2.4; 
     font-weight: bold; 
     font-size: 16px;
-    color: #bdc3c7; /* 연한 회색 */
+    color: #D3D3D3; /* 연한 회색으로 변경 */
 }
+
 
 /* 암기카드 전용 배경 박스 */
 .concept-card {
@@ -53,6 +55,7 @@ st.markdown("""
     border-radius: 12px;
     border: 1px solid #eee;
     margin-bottom: 20px;
+    margin-top: 10px;
 }
 
 /* 박스 안의 제목 스타일 */
@@ -257,7 +260,7 @@ if filtered_df.empty:
 
 
 # ==================================================
-# 🃏 암기카드 모드 (수정본)
+# 🃏 암기카드 모드 (레이아웃 깨짐 방지 수정본)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -266,42 +269,42 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # --- 회색 박스 시작 ---
-    # 박스 상단과 카테고리 표시
-    cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
-    st.markdown(f"""
-        <div class="concept-card">
-            <div class='concept-category'>{cat_text}</div>
-    """, unsafe_allow_html=True)
-    
-    # 하트 버튼 배치 (컬럼을 사용하여 박스 내부처럼 보이게 함)
-    col_fav, _ = st.columns([0.1, 0.9])
-    with col_fav:
-        if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
-            now = datetime.datetime.now().isoformat()
-            if is_fav:
-                cells = fav_sheet.findall(pk)
-                for c in cells:
-                    if fav_sheet.cell(c.row, 1).value == USER_ID:
-                        fav_sheet.delete_rows(c.row)
-                        break
-                st.session_state.favorites.remove(pk)
-            else:
-                fav_sheet.append_row([USER_ID, pk, now])
-                st.session_state.favorites.add(pk)
-            st.rerun()
-    
-    # 제목과 내용 출력 후 박스 닫기(</div>)
-    title_text = row.get('개념','제목 없음')
-    content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
-    st.markdown(f"""
-            <div class="concept-title-card" style="margin-top:5px;">{title_text}</div>
-            <div class="concept-content-card">{content_text}</div>
-        </div>
-    """, unsafe_allow_html=True)
-    # --- 회색 박스 끝 ---
+    # 1. 외곽 박스 시작 (border=True를 사용하여 전체를 감쌉니다)
+    with st.container(border=True):
+        # 카테고리 정보
+        cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
+        st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
+        
+        # 즐겨찾기 하트 버튼 (컬럼을 사용하여 왼쪽 배치)
+        col_fav, _ = st.columns([0.1, 0.9])
+        with col_fav:
+            if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
+                now = datetime.datetime.now().isoformat()
+                if is_fav:
+                    cells = fav_sheet.findall(pk)
+                    for c in cells:
+                        if fav_sheet.cell(c.row, 1).value == USER_ID:
+                            fav_sheet.delete_rows(c.row)
+                            break
+                    st.session_state.favorites.remove(pk)
+                else:
+                    fav_sheet.append_row([USER_ID, pk, now])
+                    st.session_state.favorites.add(pk)
+                st.rerun()
 
-    # 4. 하단 네비게이션 버튼
+        # 개념 제목 및 내용
+        title_text = row.get('개념','제목 없음')
+        content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
+        
+        st.markdown(f"""
+            <div class="concept-card-inner">
+                <div class="concept-title-card">{title_text}</div>
+                <div class="concept-content-card">{content_text}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    # --- 박스 끝 ---
+
+    # 4. 하단 네비게이션 버튼 (박스 외부 배치)
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
 
@@ -311,7 +314,7 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
     with col_c:
-        # 페이지 표시 글자 스타일 적용 (nav-text 클래스 사용)
+        # 연한 회색이 적용된 페이지 번호
         st.markdown(f"<div class='nav-text'>{i + 1} / {total}</div>", unsafe_allow_html=True)
 
     with col_r:
