@@ -140,7 +140,7 @@ st.sidebar.title("🔍 학습 필터")
 
 # [추가된 기능] 빈출도 관련 필터
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
-only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만") # 신규 추가
+only_high_freq = st.sidebar.checkbox("🔥 [빈출] 3번 이상 출제") # 신규 추가
 
 view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "💛 즐겨찾기만"])
 
