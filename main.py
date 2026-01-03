@@ -74,7 +74,7 @@ st.markdown("""
 .app-logo {
     font-size: 12px;         
     font-weight: 300;         
-    color: #f8f9fa;           
+    color: #a8b3b4;          
     text-align: right;
     margin-bottom: 0.5rem;
 }
