@@ -291,12 +291,25 @@ else:
         if pd.notna(row.get("내용")):
             st.write(row["내용"])
 
+
+        # 📝 기출문제 (파란 박스 안 디자인 수정 버전)
         with st.expander("📝 관련 기출문제 확인"):
             if pd.notna(row.get("기출문제(질문)")):
                 year = row.get("기출문제(출제년도)", "연도 미상")
-                st.markdown(f"**[{year}]** Q. {row['기출문제(질문)']}")
+
+                # 1. 파란 박스 안에 들어갈 전체 텍스트를 HTML로 구성
+                # 연도 부분만 회색, 0.75배 크기, 굵게 설정
+                year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
+                question_text = f"**Q. {row['기출문제(질문)']}**"
+                
+                full_content = f"{year_style}<br><br>{question_text}"
+                
                 if pd.notna(row.get("기출문제(보기)")):
-                    st.write(row["기출문제(보기)"])
+                    full_content += f"\n\n{row['기출문제(보기)']}"
+                
+                # 2. st.info(파란 박스) 출력
+                st.info(full_content)
+
                 if pd.notna(row.get("정답")):
                     st.success(f"정답: {row['정답']}")
             else:
