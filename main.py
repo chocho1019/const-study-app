@@ -192,15 +192,16 @@ else:
     else:
         display_df = filtered_df
 
-    # --- [공통 출력 루프] ---
+   # --- [공통 출력 루프] ---
     for idx, (_, row) in enumerate(display_df.iterrows()):
         pk = row["PK"]
         is_fav = pk in st.session_state.favorites
 
-        # 레이아웃 설정 (하트와 제목)
-        col_heart, col_title = st.columns([0.15, 0.85]) # 모바일 대응을 위해 하트 영역 소폭 확대
+        # 1. 하트와 제목을 아주 좁은 간격으로 배치 (0.15 -> 0.07로 축소)
+        # gap="small"을 추가하여 내부 간격을 더 줄입니다.
+        col_heart, col_title = st.columns([0.07, 0.93], gap="small") 
 
-        # ❤️ 1. 하트 버튼
+        # ❤️ 하트 버튼
         with col_heart:
             if st.button("💛" if is_fav else "🤍", key=f"fav_{pk}_{idx}"):
                 now = datetime.datetime.now().isoformat()
@@ -216,9 +217,14 @@ else:
                     st.session_state.favorites.add(pk)
                 st.rerun()
 
-        # 📘 2. 개념 제목
+        # 📘 개념 제목 (마진을 조절하여 하트쪽으로 더 밀착)
         with col_title:
-            st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
+            st.markdown(f"""
+                <div class='concept-title' style='margin-left: -10px;'>
+                    {row.get('개념','제목 없음')}
+                </div>
+                """, unsafe_allow_html=True)
+
 
         # 📄 3. 내용
         if pd.notna(row.get("내용")):
