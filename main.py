@@ -223,23 +223,26 @@ else:
         if pd.notna(row.get("내용")):
             st.write(row["내용"])
 
-        # 📝 기출문제
+        # 📝 기출문제 (디자인 수정 버전)
         with st.expander("📝 관련 기출문제 확인"):
             if pd.notna(row.get("기출문제(질문)")):
                 year = row.get("기출문제(출제년도)", "연도 미상")
 
-                question_block = f"""
-**[{year} 출제]**  
-**Q. {row['기출문제(질문)']}**
-"""
+                # 1. [22-02 출제] 부분을 작고 회색인 굵은 글씨로 출력
+                st.markdown(
+                    f"<div style='color: #888888; font-size: 0.75rem; font-weight: bold; margin-bottom: 8px;'>"
+                    f"[{year} 출제]</div>", 
+                    unsafe_allow_html=True
+                )
 
+                # 2. 문제 및 보기 텍스트 구성
+                question_text = f"**Q. {row['기출문제(질문)']}**"
                 if pd.notna(row.get("기출문제(보기)")):
-                    question_block += f"""
-
-{row['기출문제(보기)']}
-"""
-
-                st.info(question_block)
+                    # 보기가 있다면 문제 아래에 추가
+                    question_text += f"\n\n{row['기출문제(보기)']}"
+                
+                # 3. 파란색 박스(st.info)에 문제와 보기만 출력
+                st.info(question_text)
 
                 if pd.notna(row.get("정답")):
                     st.success(f"정답: {row['정답']}")
