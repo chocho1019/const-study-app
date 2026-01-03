@@ -141,8 +141,7 @@ st.sidebar.title("🔍 학습 필터")
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
 only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
 
-view_mode = st.sidebar.radio("모드 선택",["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"]
-)
+view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"])
 
 filtered_df = df.copy()
 
@@ -168,17 +167,20 @@ if sort_by_freq and "빈출" in filtered_df.columns:
     filtered_df = filtered_df.sort_values("빈출_num", ascending=False)
 
 # --------------------------------------------------
-# 🃏 암기카드 세션 상태 초기화 (★ 반드시 필요)
+# 🃏 암기카드 상태 관리
 # --------------------------------------------------
 if "card_index" not in st.session_state:
     st.session_state.card_index = 0
 
-if "show_answer" not in st.session_state:
-    st.session_state.show_answer = False
+if "last_pk_list" not in st.session_state:
+    st.session_state.last_pk_list = []
 
-# 카드 셔플용 (필터 바뀌면 다시 생성)
-if "card_order" not in st.session_state:
-    st.session_state.card_order = None
+current_pk_list = filtered_df["PK"].tolist()
+
+if st.session_state.last_pk_list != current_pk_list:
+    st.session_state.card_index = 0
+    st.session_state.last_pk_list = current_pk_list
+
 
 # --------------------------------------------------
 # 7. 사용자 인증 정보 (사이드바 하단 배치)
@@ -190,88 +192,78 @@ if st.sidebar.button("로그아웃"):
     st.rerun()
 
 # --------------------------------------------------
-# 🃏 암기카드 모드
+# 7. 메인 화면
 # --------------------------------------------------
-if view_mode == "🃏 암기카드":
 
-    if filtered_df.empty:
-        st.info("암기카드로 볼 개념이 없습니다.")
-        st.stop()
+if filtered_df.empty:
+    st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
-    # 카드 순서 생성 (필터 기준 1회 셔플)
-    if st.session_state.card_order is None:
-        st.session_state.card_order = (
-            filtered_df.sample(frac=1).reset_index(drop=True)
-        )
+# ==================================================
+# 🃏 암기카드 모드
+# ==================================================
+elif view_mode == "🃏 암기카드":
 
-    cards = st.session_state.card_order
-    idx = st.session_state.card_index % len(cards)
-    row = cards.iloc[idx]
-
+    total = len(filtered_df)
+    i = st.session_state.card_index
+    row = filtered_df.iloc[i]
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    st.markdown("## 🃏 암기카드")
+    # 네비게이션
+    col_l, col_c, col_r = st.columns([1, 2, 1])
 
-    # 카드 UI
+    with col_l:
+        if st.button("⬅ 이전", disabled=(i == 0)):
+            st.session_state.card_index -= 1
+            st.rerun()
+
+    with col_r:
+        if st.button("다음 ➡", disabled=(i == total - 1)):
+            st.session_state.card_index += 1
+            st.rerun()
+
+    st.caption(f"{i + 1} / {total}")
+
+    # 즐겨찾기
+    if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
+        now = datetime.datetime.now().isoformat()
+
+        if is_fav:
+            cells = fav_sheet.findall(pk)
+            for c in cells:
+                if fav_sheet.cell(c.row, 1).value == USER_ID:
+                    fav_sheet.delete_rows(c.row)
+                    break
+            st.session_state.favorites.remove(pk)
+        else:
+            fav_sheet.append_row([USER_ID, pk, now])
+            st.session_state.favorites.add(pk)
+
+        st.rerun()
+
+    # 개념
     st.markdown(
-        f"""
-        <div style="
-            background-color:#ffffff;
-            border-radius:14px;
-            padding:40px;
-            box-shadow:0 6px 16px rgba(0,0,0,0.12);
-            min-height:220px;
-        ">
-            <h3 style="color:#2E4053;">{row.get('개념','')}</h3>
-            <hr>
-            {
-                f"<p>{row.get('내용','')}</p>"
-                if st.session_state.show_answer
-                else "<p style='color:#aaa;'>정답을 확인하세요</p>"
-            }
-        </div>
-        """,
+        f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>",
         unsafe_allow_html=True
     )
 
-    col1, col2, col3 = st.columns(3)
+    if pd.notna(row.get("내용")):
+        st.write(row["내용"])
 
-    with col1:
-        if st.button("👁️ 정답 보기 / 숨기기"):
-            st.session_state.show_answer = not st.session_state.show_answer
-            st.rerun()
+    with st.expander("📝 관련 기출문제 확인"):
+        if pd.notna(row.get("기출문제(질문)")):
+            year = row.get("기출문제(출제년도)", "연도 미상")
+            st.markdown(f"**[{year}]** Q. {row['기출문제(질문)']}")
+            if pd.notna(row.get("기출문제(보기)")):
+                st.write(row["기출문제(보기)"])
+            if pd.notna(row.get("정답")):
+                st.success(f"정답: {row['정답']}")
+        else:
+            st.write("연결된 기출문제가 없습니다.")
 
-    with col2:
-        if st.button("⏭️ 다음 카드"):
-            st.session_state.card_index += 1
-            st.session_state.show_answer = False
-            st.rerun()
-
-    with col3:
-        if st.button("💛" if is_fav else "🤍"):
-            now = datetime.datetime.now().isoformat()
-            if is_fav:
-                cells = fav_sheet.findall(pk)
-                for c in cells:
-                    if fav_sheet.cell(c.row, 1).value == USER_ID:
-                        fav_sheet.delete_rows(c.row)
-                        break
-                st.session_state.favorites.remove(pk)
-            else:
-                fav_sheet.append_row([USER_ID, pk, now])
-                st.session_state.favorites.add(pk)
-            st.rerun()
-
-    # ⛔ 아래 기존 전체 학습 화면으로 내려가지 않게 차단
-    st.stop()
-
-
-# --------------------------------------------------
-# 7. 메인 화면 (⚠️ filtered_df 사용)
-# --------------------------------------------------
-if filtered_df.empty:
-    st.info("선택한 조건에 해당하는 개념이 없습니다.")
+# ==================================================
+# 📚 전체 학습 / 즐겨찾기
+# ==================================================
 else:
     for idx, (_, row) in enumerate(filtered_df.iterrows()):
         pk = row["PK"]
@@ -279,70 +271,38 @@ else:
 
         col_heart, col_title = st.columns([0.05, 0.95])
 
-        # ❤️ 하트 버튼
         with col_heart:
-            if st.button(
-                "💛" if is_fav else "🤍",
-                key=f"fav_{pk}_{idx}",
-            ):
+            if st.button("💛" if is_fav else "🤍", key=f"fav_{pk}_{idx}"):
                 now = datetime.datetime.now().isoformat()
 
                 if is_fav:
-                    # 🔹 Google Sheet에서 삭제
                     cells = fav_sheet.findall(pk)
                     for c in cells:
                         if fav_sheet.cell(c.row, 1).value == USER_ID:
                             fav_sheet.delete_rows(c.row)
                             break
-
                     st.session_state.favorites.remove(pk)
-
                 else:
-                    # 🔹 Google Sheet에 저장
                     fav_sheet.append_row([USER_ID, pk, now])
                     st.session_state.favorites.add(pk)
 
                 st.rerun()
 
-        # 📘 개념 제목
         with col_title:
             st.markdown(
                 f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>",
                 unsafe_allow_html=True
             )
 
-        # 📄 내용
         if pd.notna(row.get("내용")):
             st.write(row["내용"])
 
-       # 📝 기출문제 (HTML 렌더링 수정 버전)
         with st.expander("📝 관련 기출문제 확인"):
             if pd.notna(row.get("기출문제(질문)")):
                 year = row.get("기출문제(출제년도)", "연도 미상")
-
-                # 1. 스타일이 적용된 전체 컨텐츠 구성
-                # 파란색 박스 효과를 위해 div 스타일을 직접 지정합니다.
-                year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
-                question_text = f"<div style='margin-top: 10px; font-weight: bold; color: #004085;'>Q. {row['기출문제(질문)']}</div>"
-                
-                options_text = ""
+                st.markdown(f"**[{year}]** Q. {row['기출문제(질문)']}")
                 if pd.notna(row.get("기출문제(보기)")):
-                    # 보기가 있다면 줄바꿈을 적용하여 추가
-                    options_content = str(row['기출문제(보기)']).replace("\n", "<br>")
-                    options_text = f"<div style='margin-top: 10px; color: #004085;'>{options_content}</div>"
-                
-                # 전체를 하나로 묶어서 파란 박스(st.info 스타일)처럼 만듦
-                full_html = f"""
-                <div style="background-color: #e7f3fe; border-left: 5px solid #2196F3; padding: 15px; border-radius: 5px;">
-                    {year_style}
-                    {question_text}
-                    {options_text}
-                </div>
-                """
-                
-                # 2. HTML 허용 옵션과 함께 출력 (이게 핵심입니다!)
-                st.markdown(full_html, unsafe_allow_html=True)
-
+                    st.write(row["기출문제(보기)"])
                 if pd.notna(row.get("정답")):
                     st.success(f"정답: {row['정답']}")
             else:
