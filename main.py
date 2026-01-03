@@ -260,7 +260,7 @@ if filtered_df.empty:
 
 
 # ==================================================
-# 🃏 암기카드 모드 (레이아웃 깨짐 방지 수정본)
+# 🃏 암기카드 모드 (배경색 및 레이아웃 최종 수정)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -269,60 +269,69 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 외곽 박스 시작 (border=True를 사용하여 전체를 감쌉니다)
-    with st.container(border=True):
-        # 카테고리 정보
-        cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
-        st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
-        
-        # 즐겨찾기 하트 버튼 (컬럼을 사용하여 왼쪽 배치)
-        col_fav, _ = st.columns([0.1, 0.9])
-        with col_fav:
-            if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
-                now = datetime.datetime.now().isoformat()
-                if is_fav:
-                    cells = fav_sheet.findall(pk)
-                    for c in cells:
-                        if fav_sheet.cell(c.row, 1).value == USER_ID:
-                            fav_sheet.delete_rows(c.row)
-                            break
-                    st.session_state.favorites.remove(pk)
-                else:
-                    fav_sheet.append_row([USER_ID, pk, now])
-                    st.session_state.favorites.add(pk)
-                st.rerun()
+    # 1. 전체를 감싸는 회색 박스 시작 (HTML)
+    # 기존 .concept-card 클래스를 활용합니다.
+    st.markdown('<div class="concept-card">', unsafe_allow_html=True)
+    
+    # 카테고리 표시
+    cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
+    st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
+    
+    # 제목과 하트 버튼 배치
+    # 버튼을 박스 안에 넣기 위해 columns를 사용하지만, columns는 내부적으로 
+    # 박스를 쪼개기 때문에 디자인이 깨질 수 있어 간격을 미세 조정합니다.
+    col_t, col_f = st.columns([0.88, 0.12])
+    with col_t:
+        st.markdown(f"<div class='concept-title-card'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
+    with col_f:
+        if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
+            now = datetime.datetime.now().isoformat()
+            if is_fav:
+                cells = fav_sheet.findall(pk)
+                for c in cells:
+                    if fav_sheet.cell(c.row, 1).value == USER_ID:
+                        fav_sheet.delete_rows(c.row)
+                        break
+                st.session_state.favorites.remove(pk)
+            else:
+                fav_sheet.append_row([USER_ID, pk, now])
+                st.session_state.favorites.add(pk)
+            st.rerun()
 
-        # 개념 제목 및 내용
-        title_text = row.get('개념','제목 없음')
-        content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
-        
-        st.markdown(f"""
-            <div class="concept-card-inner">
-                <div class="concept-title-card">{title_text}</div>
-                <div class="concept-content-card">{content_text}</div>
-            </div>
-        """, unsafe_allow_html=True)
-    # --- 박스 끝 ---
+    # 내용 표시
+    content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
+    st.markdown(f"<div class='concept-content-card'>{content_text}</div>", unsafe_allow_html=True)
+    
+    # 회색 박스 닫기
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # 4. 하단 네비게이션 버튼 (박스 외부 배치)
+    # 2. 관련 기출문제 (박스 외부 혹은 내부 - 외부가 더 깔끔합니다)
+    with st.expander("📝 관련 기출문제 확인"):
+        if pd.notna(row.get("기출문제(질문)")):
+            year = row.get("기출문제(출제년도)", "연도 미상")
+            st.markdown(f"""
+                <div class="q-box">
+                    <span style='color: #888888; font-size: 12px; font-weight: bold;'>[{year} 출제]</span>
+                    <div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {row['기출문제(질문)']}</div>
+                    <div style='margin-top: 10px; font-size: 14px; color: #444;'>{str(row.get('기출문제(보기)','')).replace('\\n', '<br>')}</div>
+                </div>
+            """, unsafe_allow_html=True)
+            if pd.notna(row.get("정답")):
+                st.success(f"정답: {row['정답']}")
+
+    # 3. 하단 네비게이션 버튼
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
-
     with col_l:
         if st.button("＜", disabled=(i == 0), use_container_width=True):
             st.session_state.card_index -= 1
             st.rerun()
-
     with col_c:
-        # 연한 회색이 적용된 페이지 번호
         st.markdown(f"<div class='nav-text'>{i + 1} / {total}</div>", unsafe_allow_html=True)
-
     with col_r:
         if st.button("＞", disabled=(i == total - 1), use_container_width=True):
             st.session_state.card_index += 1
             st.rerun()
-
-
 
 # ==================================================
 # 📚 전체 학습 / 즐겨찾기
