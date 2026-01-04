@@ -314,27 +314,37 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
 # ==================================================
-# 📚 전체 학습 / 즐겨찾기
+# 📚 전체 학습 / 즐겨찾기 (수정됨: 개념별 그룹화 적용)
 # ==================================================
 else:
-    for idx, (_, row) in enumerate(filtered_df.iterrows()):
-        pk = row["PK"]
+    # 1. PK(개념)를 기준으로 그룹화하여 중복 출력을 방지합니다.
+    # sort=False를 사용하여 위에서 적용한 빈출도/필터 순서를 유지합니다.
+    grouped_df = filtered_df.groupby("PK", sort=False)
+
+    for pk, group in grouped_df:
+        # 해당 그룹의 첫 번째 행(row)에서 개념 정보를 가져옵니다.
+        row = group.iloc[0]
+        
         is_fav = pk in st.session_state.favorites
 
+        # --- 개념 제목 및 즐겨찾기 영역 ---
         col_heart, col_title = st.columns([0.05, 0.95])
 
         with col_heart:
-            if st.button("💛" if is_fav else "🤍", key=f"fav_{pk}_{idx}"):
+            # key를 pk 기반으로 유니크하게 생성
+            if st.button("💛" if is_fav else "🤍", key=f"fav_list_{pk}"):
                 now = datetime.datetime.now().isoformat()
 
                 if is_fav:
-                    cells = fav_sheet.findall(pk)
+                    # 즐겨찾기 해제 로직
+                    cells = fav_sheet.findall(str(pk)) # PK 타입 안전하게 str로 변환
                     for c in cells:
                         if fav_sheet.cell(c.row, 1).value == USER_ID:
                             fav_sheet.delete_rows(c.row)
                             break
                     st.session_state.favorites.remove(pk)
                 else:
+                    # 즐겨찾기 추가 로직
                     fav_sheet.append_row([USER_ID, pk, now])
                     st.session_state.favorites.add(pk)
 
@@ -346,43 +356,53 @@ else:
                 unsafe_allow_html=True
             )
 
+        # --- 개념 내용 출력 ---
         if pd.notna(row.get("내용")):
             st.write(row["내용"])
 
 
-        # 📝 기출문제 (간격 수정 버전)
-        with st.expander("📝 관련 기출문제 확인"):
-            if pd.notna(row.get("기출문제(질문)")):
-                year = row.get("기출문제(출제년도)", "연도 미상")
-                year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
-                question_text = f"<div style='margin-top: 10px; font-weight: bold; color: #004085;'>Q. {row['기출문제(질문)']}</div>"
-                
-                options_text = ""
-                if pd.notna(row.get("기출문제(보기)")):
-                    options_content = str(row['기출문제(보기)']).replace("\n", "<br>")
-                    options_text = f"<div style='margin-top: 10px; color: #004085;'>{options_content}</div>"
-                
-                # q-box 클래스를 사용하여 상단 마진(간격) 부여
-                full_html = f"""
-                <div class="q-box">
-                    {year_style}
-                    {question_text}
-                    {options_text}
-                </div>
-                """
-                st.markdown(full_html, unsafe_allow_html=True)
+        # --- 📝 기출문제 영역 (여기가 핵심 변경 사항입니다) ---
+        # 기출문제가 하나라도 있는 경우에만 토글을 생성합니다.
+        has_question = group['기출문제(질문)'].notna().any()
+        
+        if has_question:
+            with st.expander(f"📝 관련 기출문제 확인 ({len(group)}건)"):
+                # 그룹 내의 모든 행(질문들)을 순회하며 출력합니다.
+                for _, q_row in group.iterrows():
+                    if pd.notna(q_row.get("기출문제(질문)")):
+                        
+                        # 각 문제별 HTML 생성
+                        year = q_row.get("기출문제(출제년도)", "연도 미상")
+                        year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
+                        question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
+                        
+                        options_text = ""
+                        if pd.notna(q_row.get("기출문제(보기)")):
+                            options_content = str(q_row['기출문제(보기)']).replace("\n", "<br>")
+                            options_text = f"<div style='margin-top: 5px; color: #333; font-size: 0.95em;'>{options_content}</div>"
+                        
+                        # 정답 표시
+                        answer_html = ""
+                        if pd.notna(q_row.get("정답")):
+                            answer_html = f"<div style='margin-top: 8px; color: #155724; background-color: #d4edda; padding: 5px 10px; border-radius: 4px; font-size: 0.9em;'>✅ 정답: {q_row['정답']}</div>"
 
-                if pd.notna(row.get("정답")):
-                    st.write("") # 정답 박스 앞 여백
-                    st.success(f"정답: {row['정답']}")
+                        # 문제 박스 하나로 합치기
+                        full_html = f"""
+                        <div style="background-color: #f1f8ff; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #cce5ff;">
+                            {year_style}
+                            {question_text}
+                            {options_text}
+                            {answer_html}
+                        </div>
+                        """
+                        st.markdown(full_html, unsafe_allow_html=True)
 
-                
         st.divider()
 
 # --------------------------------------------------
 # 8. 하단 로고 (코드의 가장 마지막에 배치)
 # --------------------------------------------------
-st.write("") # 콘텐츠와 로고 사이 여백 추가
+st.write("") 
 st.markdown(
     "<div class='app-logo'>ⓒ초카이브 건축기사</div>", 
     unsafe_allow_html=True
