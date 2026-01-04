@@ -443,40 +443,52 @@ else:
             with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
                 for _, q_row in group.iterrows():
                     if pd.notna(q_row.get("기출문제(질문)")):
+                        # 1. 출제년도 및 질문
                         year = q_row.get("기출문제(출제년도)", "연도 미상")
                         year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
                         question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
                         
-                        # --- [수정] 보기 자동 번호 매기기 로직 ---
+                        # 2. 보기 자동 번호 매기기 로직
                         options_text = ""
                         if pd.notna(q_row.get("기출문제(보기)")):
                             raw_options = str(q_row['기출문제(보기)']).split('\n')
-                            # 공백 라인 제외하고 실제 텍스트가 있는 줄만 처리
                             valid_options = [opt.strip() for opt in raw_options if opt.strip()]
                             
                             circ_nums = ["①", "②", "③", "④", "⑤"]
                             options_html_list = []
                             for idx, opt in enumerate(valid_options):
                                 if idx < len(circ_nums):
-                                    options_html_list.append(f"<div style='margin-bottom: 3px;'>{circ_nums[idx]} {opt}</div>")
+                                    options_html_list.append(f"<div style='margin-bottom: 5px;'>{circ_nums[idx]} {opt}</div>")
                                 else:
-                                    options_html_list.append(f"<div style='margin-bottom: 3px;'>- {opt}</div>")
+                                    options_html_list.append(f"<div style='margin-bottom: 5px;'>- {opt}</div>")
                             
                             options_content = "".join(options_html_list)
                             options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
                         
+                        # 3. 정답 강조 출력 (구글 시트의 E열 또는 N열 데이터 기반)
                         answer_html = ""
-                        if pd.notna(q_row.get("정답")):
-                            answer_html = f"<div style='margin-top: 12px; color: #155724; background-color: #d4edda; padding: 6px 12px; border-radius: 4px; font-size: 0.9em; display: inline-block; font-weight: bold;'>✅ 정답: {q_row['정답']}</div>"
+                        raw_answer = q_row.get("정답")
+                        if pd.notna(raw_answer) and str(raw_answer).strip() not in ["", "nan"]:
+                            ans_str = str(raw_answer).strip()
+                            # 숫자만 있을 경우 'N번'을 붙여주고, 이미 '번'이 있으면 그대로 표시
+                            display_ans = f"{ans_str}번" if ans_str.isdigit() else ans_str
+                            
+                            answer_html = f"""
+                            <div style='margin-top: 15px; padding: 10px 14px; background-color: #e6ffed; border-radius: 8px; border: 1px solid #b7eb8f; display: inline-block;'>
+                                <span style='color: #237804; font-weight: bold; font-size: 0.95em;'>✅ 정답 : {display_ans}</span>
+                            </div>
+                            """
 
+                        # 전체 카드 디자인 조합
                         full_html = f"""
-                        <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
+                        <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.6;">
                             {year_style}
                             {question_text}
                             {options_text}
                             {answer_html}
                         </div>
                         """
+                        
                         st.markdown(full_html, unsafe_allow_html=True)
         st.divider()
 
