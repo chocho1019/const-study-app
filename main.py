@@ -36,12 +36,16 @@ creds = Credentials.from_service_account_info(
     scopes=SCOPE
 )
 
-gc = gspread.authorize(creds)
+@st.cache_resource
+def get_fav_sheet():
+    try:
+        gc = gspread.authorize(creds)
+        doc = gc.open_by_key(SPREADSHEET_ID)
+        return doc.worksheet("favorites")
+    except:
+        return None
 
-SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
-sheet = gc.open_by_key(SPREADSHEET_ID)
-
-fav_sheet = sheet.worksheet("favorites")
+fav_sheet = get_fav_sheet()
 
 
 # --------------------------------------------------
@@ -284,22 +288,33 @@ elif view_mode == "🃏 암기카드":
     cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
     st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
 
-    # 2. 즐겨찾기 버튼
+
+    # 2. 즐겨찾기 버튼 (API 부하 감소 버전)
     col_h, _ = st.columns([0.1, 0.9])
     with col_h:
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
             if is_fav:
-                cells = fav_sheet.findall(pk)
-                for c in cells:
-                    if fav_sheet.cell(c.row, 1).value == USER_ID:
-                        fav_sheet.delete_rows(c.row)
-                        break
-                st.session_state.favorites.remove(pk)
+                # [개선] 시트에서 삭제하는 로직이 API를 너무 많이 쓰므로 예외처리 강화
+                try:
+                    st.session_state.favorites.remove(pk) # 화면에서 즉시 반영
+                    cells = fav_sheet.findall(pk)
+                    for c in cells:
+                        # 첫 번째 컬럼(A열)이 유저ID인 행만 삭제
+                        if fav_sheet.cell(c.row, 1).value == USER_ID:
+                            fav_sheet.delete_rows(c.row)
+                            break
+                except:
+                    st.warning("로그 기록 중입니다. 잠시 후 새로고침 해주세요.")
             else:
-                fav_sheet.append_row([USER_ID, pk, now])
-                st.session_state.favorites.add(pk)
+                try:
+                    st.session_state.favorites.add(pk) # 화면에서 즉시 반영
+                    fav_sheet.append_row([USER_ID, pk, now])
+                except:
+                    st.error("구글 서버 응답이 지연되고 있습니다.")
             st.rerun()
+
+    
 
     # 3. 개념 박스 (글머리 기호 및 줄 간격 수정 적용)
     title_text = row.get('개념','제목 없음')
@@ -356,21 +371,27 @@ else:
         row = group.iloc[0]
         is_fav = pk in st.session_state.favorites
 
+        
+
         col_heart, col_title = st.columns([0.05, 0.95])
         with col_heart:
             if st.button("💛" if is_fav else "🤍", key=f"fav_list_{pk}"):
                 now = datetime.datetime.now().isoformat()
-                if is_fav:
-                    cells = fav_sheet.findall(str(pk))
-                    for c in cells:
-                        if fav_sheet.cell(c.row, 1).value == USER_ID:
-                            fav_sheet.delete_rows(c.row)
-                            break
-                    st.session_state.favorites.remove(pk)
-                else:
-                    fav_sheet.append_row([USER_ID, pk, now])
-                    st.session_state.favorites.add(pk)
+                try:
+                    if is_fav:
+                        st.session_state.favorites.remove(pk)
+                        cells = fav_sheet.findall(str(pk))
+                        for c in cells:
+                            if fav_sheet.cell(c.row, 1).value == USER_ID:
+                                fav_sheet.delete_rows(c.row)
+                                break
+                    else:
+                        st.session_state.favorites.add(pk)
+                        fav_sheet.append_row([USER_ID, pk, now])
+                except:
+                    pass # 연속 클릭 시 발생하는 API 에러 무시
                 st.rerun()
+        
 
         with col_title:
             st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
