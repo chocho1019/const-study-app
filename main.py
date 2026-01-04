@@ -315,7 +315,16 @@ elif view_mode == "🃏 암기카드":
     </div>
     """
     st.markdown(card_html, unsafe_allow_html=True)
-    
+
+    # --- [여기에 추가] 암기카드 전용 이미지 출력 영역 ---
+    img_val_card = row.get("이미지URL")
+    if pd.notna(img_val_card) and str(img_val_card).strip() not in ["", "0", "0.0", "nan", "None"]:
+        target_url_card = str(img_val_card).strip()
+        if target_url_card.startswith("http"):
+            final_img_url_card = get_direct_url(target_url_card)
+            # 카드 아래에 이미지를 표시합니다.
+            st.image(final_img_url_card, use_container_width=True)
+            
     # 4. 하단 네비게이션 버튼
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
