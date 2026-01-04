@@ -33,26 +33,35 @@ SCOPE = [
 
 SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
 
-@st.cache_resource
-def get_gspread_client():
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=SCOPE
-    )
-    return gspread.authorize(creds)
-
-# 전역 변수로 설정
-gc = get_gspread_client()
-
-@st.cache_resource
-def get_working_sheets():
+@st.cache_data
+def load_sheet(csv_url):
     try:
-        doc = gc.open_by_key(SPREADSHEET_ID)
-        return doc.worksheet("users"), doc.worksheet("favorites")
+        # 데이터 로드
+        df = pd.read_csv(csv_url)
+        
+        # 1. 컬럼명 앞뒤 공백 제거
+        df.columns = df.columns.str.strip()
+        
+        # 2. 만약 PK 컬럼이 없다면 첫 번째 행이 데이터로 들어갔을 수 있음
+        # (시트에 빈 줄이 있거나 헤더 인식이 꼬인 경우 대비)
+        if "PK" not in df.columns:
+            # 첫 번째 행을 컬럼으로 재설정 시도
+            df.columns = df.iloc[0].str.strip()
+            df = df[1:].reset_index(drop=True)
+            
+        # 3. PK 컬럼 존재 확인 후 처리
+        if "PK" in df.columns:
+            df["PK"] = df["PK"].astype(str).str.strip()
+        else:
+            # 여전히 PK가 없다면 에러 메시지 출력
+            st.error(f"시트에서 'PK' 컬럼을 찾을 수 없습니다. 현재 컬럼: {list(df.columns)}")
+            st.stop()
+            
+        return df
     except Exception as e:
-        return None, None
-
-user_sheet, fav_sheet = get_working_sheets()
+        st.error(f"데이터 로드 중 오류 발생: {e}")
+        st.stop()
+        
 
 
 # --------------------------------------------------
