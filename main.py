@@ -429,10 +429,12 @@ else:
 
         # --- 개념 내용 출력 (표/리스트 판별 로직 추가) ---
         if pd.notna(row.get("내용")):
-            content_raw = str(row["내용"])
+            # 💡 [수정] <br> 태그를 실제 줄바꿈 문자(\n)로 변환하여 표 안에서 줄바꿈이 작동하게 함
+            content_raw = str(row["내용"]).replace("<br>", "\n").replace("<br/>", "\n")
             
-            # 💡 수정된 부분: 만약 내용에 표 기호(|)가 포함되어 있다면 리스트 변환 없이 바로 출력
+            # 만약 내용에 표 기호(|)가 포함되어 있다면 리스트 변환 없이 바로 출력
             if "|" in content_raw and "---" in content_raw:
+                # 💡 표 내부의 줄바꿈을 위해 unsafe_allow_html=True를 사용하지 않고 바로 출력
                 st.markdown(content_raw)
             else:
                 # 기존 리스트 출력 로직
