@@ -143,24 +143,46 @@ hr { margin: 1.5rem 0; }
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------
-# 3. 데이터 로드
+# 3. 데이터 로드 (에러 방지 로직 강화)
 # --------------------------------------------------
 
 @st.cache_data
 def load_sheet(csv_url):
-    df = pd.read_csv(csv_url)
-    df.columns = df.columns.str.strip()
-    df["PK"] = df["PK"].astype(str).str.strip()
+    try:
+        df = pd.read_csv(csv_url)
+        
+        # 1. 컬럼명의 앞뒤 공백 제거 및 대문자 변환 (PK 인식율 제고)
+        df.columns = df.columns.astype(str).str.strip()
+        
+        # 2. 'PK' 컬럼이 없는 경우를 대비한 안전장치
+        if "PK" not in df.columns:
+            # 혹시 소문자로 되어있을 경우를 위해 다시 확인
+            df.rename(columns={col: col.upper() for col in df.columns if col.upper() == "PK"}, inplace=True)
+        
+        # 3. 그럼에도 PK가 없다면 첫 번째 컬럼을 PK로 강제 지정 (데이터 구조 보호)
+        if "PK" not in df.columns:
+            st.error(f"⚠️ 시트에서 'PK' 컬럼을 찾을 수 없습니다. 현재 컬럼명: {list(df.columns)}")
+            # 임시로 첫 번째 컬럼을 PK로 가정하고 진행하거나 중단
+            if len(df.columns) > 0:
+                df.rename(columns={df.columns[0]: "PK"}, inplace=True)
 
-    return df
+        # PK 데이터를 문자열로 변환 및 공백 제거
+        df["PK"] = df["PK"].astype(str).str.strip().replace("nan", "")
+        
+        return df
+    except Exception as e:
+        st.error(f"데이터 로드 중 오류 발생: {e}")
+        return pd.DataFrame()
 
-CONCEPT_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=775019664"
-QUESTION_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=46086374"
-
+# 데이터 로드 실행부
 df_concept = load_sheet(CONCEPT_URL)
 df_question = load_sheet(QUESTION_URL)
 
-df = df_concept.merge(df_question, on="PK", how="left")
+# 두 데이터프레임이 모두 비어있지 않을 때만 병합
+if not df_concept.empty and not df_question.empty:
+    df = df_concept.merge(df_question, on="PK", how="left")
+else:
+    df = df_concept # 질문 데이터가 없
 
 # --------------------------------------------------
 # 4. 초기 사용자 인증 처리 (개선된 버전)
