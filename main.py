@@ -11,17 +11,16 @@ from google.oauth2.service_account import Credentials
 # --------------------------------------------------
 def get_direct_url(url):
     if "drive.google.com" in url:
-        # 1. 파일 ID 추출 (다양한 URL 형식 대응)
         file_id = ""
+        # URL에서 ID 추출 (다양한 형식 대응)
         if "id=" in url:
             file_id = url.split("id=")[1].split("&")[0]
         elif "file/d/" in url:
             file_id = url.split("file/d/")[1].split("/")[0]
         
         if file_id:
-            # 2. 가장 안정적인 다이렉트 뷰 URL로 반환
-            return f"https://drive.google.com/uc?export=view&id={file_id}"
-            
+            # uc 방식 대신 더 안정적인 thumbnail 방식으로 변환 (sz=w1000은 해상도 설정)
+            return f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
     return url
     
 # --------------------------------------------------
@@ -375,22 +374,20 @@ else:
             st.markdown(html_content, unsafe_allow_html=True)
 
 
-      # --- 이미지 출력 영역 (최종 수정본) ---
-        if "이미지URL" in row:
-            raw_val = row["이미지URL"]
-            # 1. 값이 실제 존재하는지, 숫자 0은 아닌지, 문자열 'nan'은 아닌지 엄격히 체크
-            if pd.notna(raw_val) and str(raw_val).strip() not in ["", "0", "nan", "None"]:
-                image_raw_url = str(raw_val).strip()
-                
-                # 2. 올바른 URL 형식(http)인 경우에만 진행
-                if image_raw_url.startswith("http"):
-                    image_url = get_direct_url(image_raw_url)
-                    try:
-                        # 3. 캡션 없이 이미지만 깔끔하게 출력
-                        st.image(image_url, use_container_width=True)
-                    except Exception as e:
-                        # 호출 실패 시 로그 대신 작은 안내만 표시
-                        st.caption("⚠️ 이미지를 불러올 수 없습니다. (링크/권한 확인 필요)")
+     # --- 이미지 출력 영역 (초기화 후 재작성) ---
+        img_val = row.get("이미지URL")
+        
+        # 1. 실제 데이터가 있는지 체크 (0, nan, 빈문자열 모두 제외)
+        if pd.notna(img_val) and str(img_val).strip() not in ["", "0", "0.0", "nan", "None"]:
+            target_url = str(img_val).strip()
+            
+            if target_url.startswith("http"):
+                final_img_url = get_direct_url(target_url)
+                # st.write(f"디버깅용 URL: {final_img_url}") # 이미지 안 나오면 이 주석을 해제해서 링크 확인
+                st.image(final_img_url, use_container_width=True)
+            else:
+                # URL이 아닌 텍스트(예: 0)가 들어있을 경우 아무것도 하지 않음
+                pass
 
 
         # --- 📝 기출문제 영역 --- 
