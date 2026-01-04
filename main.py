@@ -123,12 +123,16 @@ def load_sheet(csv_url):
     df = pd.read_csv(csv_url)
     df.columns = df.columns.str.strip()
     
-    # --- 이 줄을 추가하세요! ---
+    # 1. NaN(빈칸)을 빈 글자로 바꿉니다.
     df = df.fillna("") 
-    # fillna("")는 "NaN(빈칸)을 ""(빈 문자열)로 채워라"라는 뜻입니다.
-    # -----------------------
-
+    
+    # 2. PK 컬럼을 깔끔하게 정리합니다.
     df["PK"] = df["PK"].astype(str).str.strip()
+    
+    # --- [추가] 3. PK가 비어있는(빈 줄) 데이터는 삭제합니다. ---
+    df = df[df["PK"] != ""]
+    # -----------------------------------------------------
+    
     return df
 
 CONCEPT_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=775019664"
