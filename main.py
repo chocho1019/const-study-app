@@ -375,21 +375,22 @@ else:
             st.markdown(html_content, unsafe_allow_html=True)
 
 
-      # --- 이미지 출력 영역 (수정본) ---
-        # 1. 컬럼이 존재하는지 확인하고, 해당 셀이 비어있지 않은지 체크
-        if "이미지URL" in row and pd.notna(row["이미지URL"]):
-            image_raw_url = str(row["이미지URL"]).strip()
-            
-            # 2. 'nan' 문자열이 아니고 실제 값이 존재할 때만 실행
-            if image_raw_url and image_raw_url.lower() != "nan":
-                # 3. HTTP로 시작하는 올바른 URL인지 확인
+      # --- 이미지 출력 영역 (최종 수정본) ---
+        if "이미지URL" in row:
+            raw_val = row["이미지URL"]
+            # 1. 값이 실제 존재하는지, 숫자 0은 아닌지, 문자열 'nan'은 아닌지 엄격히 체크
+            if pd.notna(raw_val) and str(raw_val).strip() not in ["", "0", "nan", "None"]:
+                image_raw_url = str(raw_val).strip()
+                
+                # 2. 올바른 URL 형식(http)인 경우에만 진행
                 if image_raw_url.startswith("http"):
                     image_url = get_direct_url(image_raw_url)
                     try:
+                        # 3. 캡션 없이 이미지만 깔끔하게 출력
                         st.image(image_url, use_container_width=True)
                     except Exception as e:
-                        # 이미지를 불러오지 못할 경우 사용자에게 알림 (선택 사항)
-                        st.caption("⚠️ 이미지를 불러올 수 없습니다.")
+                        # 호출 실패 시 로그 대신 작은 안내만 표시
+                        st.caption("⚠️ 이미지를 불러올 수 없습니다. (링크/권한 확인 필요)")
 
 
         # --- 📝 기출문제 영역 --- 
