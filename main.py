@@ -340,6 +340,7 @@ else:
         with col_title:
             st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
+        
         # --- 개념 내용 출력 (글머리 기호 및 줄 간격 수정) ---
         if pd.notna(row.get("내용")):
             content_raw = str(row["내용"])
@@ -352,6 +353,14 @@ else:
                     html_content += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
             html_content += "</ul>"
             st.markdown(html_content, unsafe_allow_html=True)
+
+        
+        # --- 개념 내용 출력 아래에 추가 ---
+        if pd.notna(row.get("이미지URL")) and str(row["이미지URL"]).strip():
+            # URL이 "http"로 시작하는지 확인 후 이미지 출력
+            image_url = str(row["이미지URL"]).strip()
+            if image_url.startswith("http"):
+                st.image(image_url, use_container_width=True)
 
 
         # --- 📝 기출문제 영역 --- 
