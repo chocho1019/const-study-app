@@ -143,52 +143,24 @@ hr { margin: 1.5rem 0; }
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------
-# 3. 데이터 로드 (URL 정의 및 에러 방지 로직)
+# 3. 데이터 로드
 # --------------------------------------------------
-
-# ★ 이 부분이 누락되어 NameError가 발생했습니다 ★
-CONCEPT_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=775019664"
-QUESTION_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=46086374"
 
 @st.cache_data
 def load_sheet(csv_url):
-    try:
-        df = pd.read_csv(csv_url)
-        # 컬럼명의 앞뒤 공백 제거 및 문자열화
-        df.columns = df.columns.astype(str).str.strip()
-        
-        # 'PK' 컬럼 대소문자 통일 (인식율 제고)
-        if "PK" not in df.columns:
-            df.rename(columns={col: col.upper() for col in df.columns if col.upper() == "PK"}, inplace=True)
-        
-        # PK가 여전히 없다면 첫 번째 컬럼을 PK로 지정
-        if "PK" not in df.columns and len(df.columns) > 0:
-            df.rename(columns={df.columns[0]: "PK"}, inplace=True)
+    df = pd.read_csv(csv_url)
+    df.columns = df.columns.str.strip()
+    df["PK"] = df["PK"].astype(str).str.strip()
 
-        # PK 데이터를 문자열로 변환 및 공백 제거
-        if "PK" in df.columns:
-            df["PK"] = df["PK"].astype(str).str.strip().replace("nan", "")
-        
-        return df
-    except Exception as e:
-        st.error(f"데이터 로드 중 오류 발생: {e}")
-        return pd.DataFrame()
+    return df
 
-# 데이터 로드 실행
+CONCEPT_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=775019664"
+QUESTION_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=46086374"
+
 df_concept = load_sheet(CONCEPT_URL)
 df_question = load_sheet(QUESTION_URL)
 
-# 데이터 병합 및 예외 처리
-if not df_concept.empty:
-    if not df_question.empty:
-        # 두 데이터가 모두 있으면 PK 기준으로 병합
-        df = df_concept.merge(df_question, on="PK", how="left")
-    else:
-        # 질문지가 비어있으면 개념 데이터만 사용
-        df = df_concept
-else:
-    st.error("⚠️ 개념 데이터를 불러오지 못했습니다. 구글 시트 링크를 확인해주세요.")
-    st.stop()
+df = df_concept.merge(df_question, on="PK", how="left")
 
 # --------------------------------------------------
 # 4. 초기 사용자 인증 처리 (개선된 버전)
@@ -464,59 +436,35 @@ else:
                 pass
 
 
-       # --- 📝 기출문제 영역 --- 
+        # --- 📝 기출문제 영역 --- 
         has_question = group['기출문제(질문)'].notna().any()
         if has_question:
+            # 이 줄을 추가하여 개념 내용과 기출문제 토글 사이 간격을 띄웁니다.
             st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
             with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
                 for _, q_row in group.iterrows():
                     if pd.notna(q_row.get("기출문제(질문)")):
-                        # 1. 출제년도 및 질문
                         year = q_row.get("기출문제(출제년도)", "연도 미상")
                         year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
                         question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
                         
-                        # 2. 보기 자동 번호 매기기 로직
                         options_text = ""
                         if pd.notna(q_row.get("기출문제(보기)")):
-                            raw_options = str(q_row['기출문제(보기)']).split('\n')
-                            valid_options = [opt.strip() for opt in raw_options if opt.strip()]
-                            
-                            circ_nums = ["①", "②", "③", "④", "⑤"]
-                            options_html_list = []
-                            for idx, opt in enumerate(valid_options):
-                                if idx < len(circ_nums):
-                                    options_html_list.append(f"<div style='margin-bottom: 5px;'>{circ_nums[idx]} {opt}</div>")
-                                else:
-                                    options_html_list.append(f"<div style='margin-bottom: 5px;'>- {opt}</div>")
-                            
-                            options_content = "".join(options_html_list)
-                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
+                            options_content = str(q_row['기출문제(보기)']).replace("\n", "<br>")
+                            options_text = f"<div style='margin-top: 5px; color: #333; font-size: 0.95em;'>{options_content}</div>"
                         
-                        # 3. 정답 강조 출력 (구글 시트의 E열 또는 N열 데이터 기반)
                         answer_html = ""
-                        raw_answer = q_row.get("정답")
-                        if pd.notna(raw_answer) and str(raw_answer).strip() not in ["", "nan"]:
-                            ans_str = str(raw_answer).strip()
-                            # 숫자만 있을 경우 'N번'을 붙여주고, 이미 '번'이 있으면 그대로 표시
-                            display_ans = f"{ans_str}번" if ans_str.isdigit() else ans_str
-                            
-                            answer_html = f"""
-                            <div style='margin-top: 15px; padding: 10px 14px; background-color: #e6ffed; border-radius: 8px; border: 1px solid #b7eb8f; display: inline-block;'>
-                                <span style='color: #237804; font-weight: bold; font-size: 0.95em;'>✅ 정답 : {display_ans}</span>
-                            </div>
-                            """
+                        if pd.notna(q_row.get("정답")):
+                            answer_html = f"<div style='margin-top: 8px; color: #155724; background-color: #d4edda; padding: 5px 10px; border-radius: 4px; font-size: 0.9em;'>✅ 정답: {q_row['정답']}</div>"
 
-                        # 전체 카드 디자인 조합
                         full_html = f"""
-                        <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.6;">
+                        <div style="background-color: #f1f8ff; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #cce5ff;">
                             {year_style}
                             {question_text}
                             {options_text}
                             {answer_html}
                         </div>
                         """
-                        
                         st.markdown(full_html, unsafe_allow_html=True)
         st.divider()
 
