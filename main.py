@@ -429,22 +429,23 @@ else:
 
         # --- 개념 내용 출력 ---
         if pd.notna(row.get("내용")):
-            # 💡 셀 안의 <br>을 마크다운의 줄바꿈 문자로 변환
-            content_raw = str(row["내용"]).replace("<br>", "  \n") 
+            content_raw = str(row["내용"])
             
-            if "|" in content_raw:
-                # 💡 표 내부 줄바꿈이 먹히도록 처리
-                st.markdown(content_raw)
+            if "|" in content_raw and "---" in content_raw:
+                # 💡 핵심 수정: 표 내부의 <br>이 작동하도록 HTML 렌더링을 허용
+                # 마크다운 표 안에 <br>이 있으면 브라우저가 이를 줄바꿈으로 처리합니다.
+                st.write(content_raw, unsafe_allow_html=True)
             else:
                 # 기존 리스트 출력 로직
                 lines = content_raw.split('\n')
                 html_content = "<ul style='padding-left: 20px; margin-bottom: 0; color: #333;'>"
                 for line in lines:
                     if line.strip():
-                        html_content += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
+                        # 리스트 모드일 때도 <br>을 실제 줄바꿈으로 변환
+                        clean_line = line.strip().replace("<br>", "<br/>")
+                        html_content += f<li style='margin-bottom: 2px; line-height: 1.4;'>{clean_line}</li>
                 html_content += "</ul>"
                 st.markdown(html_content, unsafe_allow_html=True)
-
     
 
 
