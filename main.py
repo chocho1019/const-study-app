@@ -470,14 +470,26 @@ else:
                             options_content = "".join(options_html_list)
                             options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
 
-                        # --- [정답 처리 로직: 얇은 글씨 + 들여쓰기 적용] ---
+                        # --- [정답 처리 로직: 오류 방지를 위해 한 줄로 정리] ---
                         ans_display = ""
                         if pd.notna(q_row.get("정답")):
                             try:
                                 ans_val = int(float(q_row['정답']))
                             except:
                                 ans_val = q_row['정답']
-                            ans_display = f"
+                            # 줄바꿈 오류를 피하기 위해 f-string을 한 줄로 구성했습니다.
+                            ans_display = f"<div style='margin-top: 15px; padding-left: 15px; color: #333; font-size: 0.95em; font-weight: normal;'> * 정답 : {ans_val}번</div>"
+
+                        # --- 전체 문제 박스 구성 및 출력 ---
+                        full_html = f"""
+                        <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
+                            {year_style}
+                            {question_text}
+                            {options_text}
+                            {ans_display}
+                        </div>
+                        """
+                        st.markdown(full_html, unsafe_allow_html=True)
 
                         
         st.divider()
