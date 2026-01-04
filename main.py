@@ -352,14 +352,29 @@ elif view_mode == "🃏 암기카드":
     """
     st.markdown(card_html, unsafe_allow_html=True)
 
-    # --- [여기에 추가] 암기카드 전용 이미지 출력 영역 ---
+   # --- [수정] 암기카드 전용 이미지 출력 영역 ---
     img_val_card = row.get("이미지URL")
     if pd.notna(img_val_card) and str(img_val_card).strip() not in ["", "0", "0.0", "nan", "None"]:
         target_url_card = str(img_val_card).strip()
         if target_url_card.startswith("http"):
             final_img_url_card = get_direct_url(target_url_card)
-            # 카드 아래에 이미지를 표시합니다.
             st.image(final_img_url_card, use_container_width=True)
+
+    # --- [추가] 암기카드 모드에서도 기출문제 표시 ---
+    # 암기카드 모드는 단일 행(row)이므로 해당 PK의 모든 질문을 다시 필터링해야 함
+    card_questions = df_question[df_question["PK"] == str(pk)]
+    has_q_card = not card_questions.empty and card_questions['기출문제(질문)'].notna().any()
+
+    if has_q_card:
+        with st.expander(f"📝 관련 기출문제 ({len(card_questions)}건)"):
+            for _, q_row in card_questions.iterrows():
+                # (기존 기출문제 출력 HTML 로직 동일하게 삽입)
+                year = q_row.get("기출문제(출제년도)", "연도 미상")
+                # ... (중략: 기존에 작성하신 기출문제 상세 출력 코드와 동일) ...
+                st.markdown(full_html, unsafe_allow_html=True)
+    else:
+        with st.expander("📝 관련 기출문제 (0건)"):
+            st.write("등록된 관련 기출문제가 없습니다.")
             
     # 4. 하단 네비게이션 버튼
     st.write("") 
