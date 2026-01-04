@@ -254,11 +254,11 @@ elif view_mode == "🃏 암기카드":
     pk = row["PK"]
     is_fav = pk in st.session_state.favorites
 
-    # 1. 최상단: 카테고리 정보 표시 (클릭 시 필터링)
+    # 1. 최상단: 카테고리 정보 표시
     cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
     st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
 
- # 2. 즐겨찾기 버튼 (박스 위로 분리)
+    # 2. 즐겨찾기 버튼
     col_h, _ = st.columns([0.1, 0.9])
     with col_h:
         if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
@@ -275,103 +275,91 @@ elif view_mode == "🃏 암기카드":
                 st.session_state.favorites.add(pk)
             st.rerun()
 
-    # 3. 개념 박스 (제목과 내용을 하나의 박스로 묶음)
+    # 3. 개념 박스 (글머리 기호 및 줄 간격 수정 적용)
     title_text = row.get('개념','제목 없음')
-    content_text = row.get('내용','') if pd.notna(row.get('내용')) else ""
+    content_raw = row.get('내용','') if pd.notna(row.get('내용')) else ""
     
-    # 배경 박스가 끊기지 않도록 하나의 HTML로 합쳐서 출력합니다.
+    # 줄바꿈 처리 및 글머리 기호 생성
+    content_html = ""
+    if content_raw:
+        lines = str(content_raw).split('\n')
+        content_html = "<ul style='padding-left: 20px; margin-top: 0; color: #333;'>"
+        for line in lines:
+            if line.strip():
+                content_html += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
+        content_html += "</ul>"
+
     card_html = f"""
     <div class="concept-card">
         <div class="concept-title-card">{title_text}</div>
-        <div class="concept-content-card">{content_text}</div>
+        <div class="concept-content-card">{content_html}</div>
     </div>
     """
     st.markdown(card_html, unsafe_allow_html=True)
     
-    # 4. 하단 네비게이션 버튼 (가운데 숫자 색상 변경)
+    # 4. 하단 네비게이션 버튼
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
-
     with col_l:
         if st.button("＜", disabled=(i == 0), use_container_width=True):
             st.session_state.card_index -= 1
             st.rerun()
-
     with col_c:
-        # style 속성에 color: #D3D3D3(연한 회색)를 추가했습니다.
-        st.markdown(
-            f"""
-            <p style='text-align: center; line-height: 2.4; font-weight: bold; font-size: 16px; color: #D3D3D3;'>
-                {i + 1} / {total}
-            </p>
-            """, 
-            unsafe_allow_html=True
-        )
-
+        st.markdown(f"<p style='text-align: center; line-height: 2.4; font-weight: bold; font-size: 16px; color: #D3D3D3;'>{i + 1} / {total}</p>", unsafe_allow_html=True)
     with col_r:
         if st.button("＞", disabled=(i == total - 1), use_container_width=True):
             st.session_state.card_index += 1
             st.rerun()
 
 # ==================================================
-# 📚 전체 학습 / 즐겨찾기 (수정됨: 개념별 그룹화 적용)
+# 📚 전체 학습 / 즐겨찾기 (개념별 그룹화 + 스타일 수정 적용)
 # ==================================================
 else:
-    # 1. PK(개념)를 기준으로 그룹화하여 중복 출력을 방지합니다.
-    # sort=False를 사용하여 위에서 적용한 빈출도/필터 순서를 유지합니다.
     grouped_df = filtered_df.groupby("PK", sort=False)
 
     for pk, group in grouped_df:
-        # 해당 그룹의 첫 번째 행(row)에서 개념 정보를 가져옵니다.
         row = group.iloc[0]
-        
         is_fav = pk in st.session_state.favorites
 
         # --- 개념 제목 및 즐겨찾기 영역 ---
         col_heart, col_title = st.columns([0.05, 0.95])
-
         with col_heart:
-            # key를 pk 기반으로 유니크하게 생성
             if st.button("💛" if is_fav else "🤍", key=f"fav_list_{pk}"):
                 now = datetime.datetime.now().isoformat()
-
                 if is_fav:
-                    # 즐겨찾기 해제 로직
-                    cells = fav_sheet.findall(str(pk)) # PK 타입 안전하게 str로 변환
+                    cells = fav_sheet.findall(str(pk))
                     for c in cells:
                         if fav_sheet.cell(c.row, 1).value == USER_ID:
                             fav_sheet.delete_rows(c.row)
                             break
                     st.session_state.favorites.remove(pk)
                 else:
-                    # 즐겨찾기 추가 로직
                     fav_sheet.append_row([USER_ID, pk, now])
                     st.session_state.favorites.add(pk)
-
                 st.rerun()
 
         with col_title:
-            st.markdown(
-                f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>",
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-        # --- 개념 내용 출력 ---
+        # --- 개념 내용 출력 (글머리 기호 및 줄 간격 수정 적용) ---
         if pd.notna(row.get("내용")):
-            st.write(row["내용"])
+            content_raw = str(row["내용"])
+            lines = content_raw.split('\n')
+            
+            html_content = "<ul style='padding-left: 20px; margin-bottom: 0; color: #333;'>"
+            for line in lines:
+                if line.strip():
+                    # margin-bottom: 2px로 간격을 매우 좁게 설정
+                    html_content += f<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
+            html_content += "</ul>"
+            st.markdown(html_content, unsafe_allow_html=True)
 
-
-        # --- 📝 기출문제 영역 (여기가 핵심 변경 사항입니다) ---
-        # 기출문제가 하나라도 있는 경우에만 토글을 생성합니다.
+        # --- 📝 기출문제 영역 ---
         has_question = group['기출문제(질문)'].notna().any()
-        
         if has_question:
             with st.expander(f"📝 관련 기출문제 확인 ({len(group)}건)"):
-                # 그룹 내의 모든 행(질문들)을 순회하며 출력합니다.
                 for _, q_row in group.iterrows():
                     if pd.notna(q_row.get("기출문제(질문)")):
-                        
-                        # 각 문제별 HTML 생성
                         year = q_row.get("기출문제(출제년도)", "연도 미상")
                         year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
                         question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
@@ -381,12 +369,10 @@ else:
                             options_content = str(q_row['기출문제(보기)']).replace("\n", "<br>")
                             options_text = f"<div style='margin-top: 5px; color: #333; font-size: 0.95em;'>{options_content}</div>"
                         
-                        # 정답 표시
                         answer_html = ""
                         if pd.notna(q_row.get("정답")):
                             answer_html = f"<div style='margin-top: 8px; color: #155724; background-color: #d4edda; padding: 5px 10px; border-radius: 4px; font-size: 0.9em;'>✅ 정답: {q_row['정답']}</div>"
 
-                        # 문제 박스 하나로 합치기
                         full_html = f"""
                         <div style="background-color: #f1f8ff; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #cce5ff;">
                             {year_style}
@@ -396,8 +382,8 @@ else:
                         </div>
                         """
                         st.markdown(full_html, unsafe_allow_html=True)
-
         st.divider()
+
 
 # --------------------------------------------------
 # 8. 하단 로고 (코드의 가장 마지막에 배치)
