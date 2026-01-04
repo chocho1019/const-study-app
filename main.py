@@ -447,17 +447,11 @@ else:
                         year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
                         question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
                         
-                        # --- [기출문제 보기 & 보기2 선택 출력 로직] ---
+                        # --- [기출문제 보기 우선순위 출력 로직] ---
                         options_text = ""
                         
-                        # 1. '기출문제(보기2)' 원문 우선 확인
-                        manual_options = q_row.get("기출문제(보기2)")
-                        if pd.notna(manual_options) and str(manual_options).strip() not in ["", "0", "nan", "None"]:
-                            options_content = str(manual_options).replace('\n', '<br>')
-                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{options_content}</div>"
-                        
-                        # 2. '기출문제(보기2)'가 비어있을 때만 기존 자동 번호 매기기 실행
-                        elif pd.notna(q_row.get("기출문제(보기)")):
+                        # 1. '기출문제(보기)' 데이터가 있으면 자동 번호 매기기 실행
+                        if pd.notna(q_row.get("기출문제(보기)")) and str(q_row["기출문제(보기)"]).strip() not in ["", "0", "nan", "None"]:
                             raw_options = str(q_row['기출문제(보기)']).split('\n')
                             valid_options = [opt.strip() for opt in raw_options if opt.strip()]
                             circ_nums = ["①", "②", "③", "④", "⑤"]
@@ -469,15 +463,24 @@ else:
                                     options_html_list.append(f"<div style='margin-bottom: 3px;'>- {opt}</div>")
                             options_content = "".join(options_html_list)
                             options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
+                        
+                        # 2. '기출문제(보기)'가 없고 '기출문제(보기1)'이 있으면 그대로 출력 (글머리 기호 X)
+                        elif pd.notna(q_row.get("기출문제(보기1)")) and str(q_row["기출문제(보기1)"]).strip() not in ["", "0", "nan", "None"]:
+                            opt1_content = str(q_row["기출문제(보기1)"]).replace('\n', '<br>')
+                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{opt1_content}</div>"
+                        
+                        # 3. 앞의 두 개가 모두 없고 '기출문제(보기2)'가 있으면 그대로 출력 (글머리 기호 X)
+                        elif pd.notna(q_row.get("기출문제(보기2)")) and str(q_row["기출문제(보기2)"]).strip() not in ["", "0", "nan", "None"]:
+                            opt2_content = str(q_row["기출문제(보기2)"]).replace('\n', '<br>')
+                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{opt2_content}</div>"
 
-                        # --- [정답 처리 로직: 오류 방지를 위해 한 줄로 정리] ---
+                        # --- [정답 처리 로직: 얇은 글씨 + 들여쓰기] ---
                         ans_display = ""
                         if pd.notna(q_row.get("정답")):
                             try:
                                 ans_val = int(float(q_row['정답']))
                             except:
                                 ans_val = q_row['정답']
-                            # 줄바꿈 오류를 피하기 위해 f-string을 한 줄로 구성했습니다.
                             ans_display = f"<div style='margin-top: 15px; padding-left: 15px; color: #333; font-size: 0.95em; font-weight: normal;'> * 정답 : {ans_val}번</div>"
 
                         # --- 전체 문제 박스 구성 및 출력 ---
