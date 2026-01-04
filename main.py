@@ -410,19 +410,25 @@ else:
         with col_title:
             st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-        
-        # --- 개념 내용 출력 (글머리 기호 및 줄 간격 수정) ---
+
+        # --- 개념 내용 출력 (표/리스트 판별 로직 추가) ---
         if pd.notna(row.get("내용")):
             content_raw = str(row["내용"])
-            lines = content_raw.split('\n')
             
-            html_content = "<ul style='padding-left: 20px; margin-bottom: 0; color: #333;'>"
-            for line in lines:
-                if line.strip():
-                    # 수정된 부분: f 다음에 따옴표 추가
-                    html_content += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
-            html_content += "</ul>"
-            st.markdown(html_content, unsafe_allow_html=True)
+            # 💡 수정된 부분: 만약 내용에 표 기호(|)가 포함되어 있다면 리스트 변환 없이 바로 출력
+            if "|" in content_raw and "---" in content_raw:
+                st.markdown(content_raw)
+            else:
+                # 기존 리스트 출력 로직
+                lines = content_raw.split('\n')
+                html_content = "<ul style='padding-left: 20px; margin-bottom: 0; color: #333;'>"
+                for line in lines:
+                    if line.strip():
+                        html_content += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
+                html_content += "</ul>"
+                st.markdown(html_content, unsafe_allow_html=True)
+
+    
 
 
      # --- 이미지 출력 영역 (초기화 후 재작성) ---
