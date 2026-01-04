@@ -279,13 +279,13 @@ elif view_mode == "🃏 암기카드":
     title_text = row.get('개념','제목 없음')
     content_raw = row.get('내용','') if pd.notna(row.get('내용')) else ""
     
-    # 줄바꿈 처리 및 글머리 기호 생성
     content_html = ""
     if content_raw:
         lines = str(content_raw).split('\n')
         content_html = "<ul style='padding-left: 20px; margin-top: 0; color: #333;'>"
         for line in lines:
             if line.strip():
+                # 수정된 부분: f 다음에 따옴표 추가
                 content_html += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
         content_html += "</ul>"
 
@@ -312,7 +312,7 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
 # ==================================================
-# 📚 전체 학습 / 즐겨찾기 (개념별 그룹화 + 스타일 수정 적용)
+# 📚 전체 학습 / 즐겨찾기
 # ==================================================
 else:
     grouped_df = filtered_df.groupby("PK", sort=False)
@@ -321,7 +321,6 @@ else:
         row = group.iloc[0]
         is_fav = pk in st.session_state.favorites
 
-        # --- 개념 제목 및 즐겨찾기 영역 ---
         col_heart, col_title = st.columns([0.05, 0.95])
         with col_heart:
             if st.button("💛" if is_fav else "🤍", key=f"fav_list_{pk}"):
@@ -341,7 +340,7 @@ else:
         with col_title:
             st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-        # --- 개념 내용 출력 (글머리 기호 및 줄 간격 수정 적용) ---
+        # --- 개념 내용 출력 (글머리 기호 및 줄 간격 수정) ---
         if pd.notna(row.get("내용")):
             content_raw = str(row["내용"])
             lines = content_raw.split('\n')
@@ -349,8 +348,8 @@ else:
             html_content = "<ul style='padding-left: 20px; margin-bottom: 0; color: #333;'>"
             for line in lines:
                 if line.strip():
-                    # margin-bottom: 2px로 간격을 매우 좁게 설정
-                    html_content += f<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
+                    # 수정된 부분: f 다음에 따옴표 추가
+                    html_content += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
             html_content += "</ul>"
             st.markdown(html_content, unsafe_allow_html=True)
 
@@ -384,12 +383,8 @@ else:
                         st.markdown(full_html, unsafe_allow_html=True)
         st.divider()
 
-
 # --------------------------------------------------
-# 8. 하단 로고 (코드의 가장 마지막에 배치)
+# 8. 하단 로고
 # --------------------------------------------------
 st.write("") 
-st.markdown(
-    "<div class='app-logo'>ⓒ초카이브 건축기사</div>", 
-    unsafe_allow_html=True
-)
+st.markdown("<div class='app-logo'>ⓒ초카이브 건축기사</div>", unsafe_allow_html=True)
