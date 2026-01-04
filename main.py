@@ -436,22 +436,19 @@ else:
                 pass
 
 
-        # --- 📝 기출문제 영역 --- 
-        has_question = group['기출문제(질문)'].notna().any()
-        if has_question:
-            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-            with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
-                for _, q_row in group.iterrows():
-                    if pd.notna(q_row.get("기출문제(질문)")):
-                        year = q_row.get("기출문제(출제년도)", "연도 미상")
-                        year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
-                        question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
-                        
-                        # --- [수정] 보기 자동 번호 매기기 로직 ---
+        # --- [기출문제 보기 & 보기2 선택 출력 로직] ---
                         options_text = ""
-                        if pd.notna(q_row.get("기출문제(보기)")):
+                        
+                        # 1. '기출문제(보기2)' 원문 우선 확인 (비어있지 않으면 그대로 출력)
+                        manual_options = q_row.get("기출문제(보기2)")
+                        if pd.notna(manual_options) and str(manual_options).strip() not in ["", "0", "nan"]:
+                            # 수기 입력인 경우 줄바꿈(\n)을 HTML 줄바꿈(<br>)으로 변환하여 그대로 출력
+                            options_content = str(manual_options).replace('\n', '<br>')
+                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{options_content}</div>"
+                        
+                        # 2. '기출문제(보기2)'가 비어있을 때만 기존 자동 번호 매기기 실행
+                        elif pd.notna(q_row.get("기출문제(보기)")):
                             raw_options = str(q_row['기출문제(보기)']).split('\n')
-                            # 공백 라인 제외하고 실제 텍스트가 있는 줄만 처리
                             valid_options = [opt.strip() for opt in raw_options if opt.strip()]
                             
                             circ_nums = ["①", "②", "③", "④", "⑤"]
@@ -465,9 +462,7 @@ else:
                             options_content = "".join(options_html_list)
                             options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
 
-
-                        
-                        # --- [정답 처리 로직 정리] ---
+                        # --- [정답 처리 로직: 얇은 글씨 + 들여쓰기 적용] ---
                         ans_display = ""
                         if pd.notna(q_row.get("정답")):
                             try:
@@ -476,10 +471,14 @@ else:
                             except:
                                 ans_val = q_row['정답']
                             
-                            # 깔끔한 텍스트 형식으로 생성
-                            ans_display = f"<div style='margin-top: 15px; color: #333; font-size: 0.85em; font-weight: light;'> * 정답 : {ans_val}번</div>"
+                            # font-weight: normal(얇게), padding-left: 15px(들여쓰기)
+                            ans_display = f"""
+                            <div style='margin-top: 15px; padding-left: 15px; color: #333; font-size: 0.95em; font-weight: normal;'>
+                                * 정답 : {ans_val}번
+                            </div>
+                            """
 
-                        # 전체 문제 박스 구성 (태그가 깨지지 않게 변수를 미리 조립)
+                        # --- 전체 문제 박스 구성 및 출력 ---
                         full_html = f"""
                         <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
                             {year_style}
@@ -488,7 +487,6 @@ else:
                             {ans_display}
                         </div>
                         """
-                        # 최종 출력
                         st.markdown(full_html, unsafe_allow_html=True)
 
                         
