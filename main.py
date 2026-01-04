@@ -115,22 +115,33 @@ hr { margin: 1.5rem 0; }
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------
-# 3. 데이터 로드 (수정 버전)
+# 3. 데이터 로드 (함수 복구 및 수정 버전)
 # --------------------------------------------------
+
+# 삭제되었던 기본 로드 함수를 다시 추가해야 합니다.
+def load_sheet(csv_url):
+    df = pd.read_csv(csv_url)
+    df.columns = df.columns.str.strip()
+    df["PK"] = df["PK"].astype(str).str.strip()
+    return df
+
 @st.cache_data
 def load_and_group_data(concept_url, question_url):
     df_c = load_sheet(concept_url)
     df_q = load_sheet(question_url)
     
-    # 기출문제 데이터를 PK별로 그룹화하여 리스트로 만듦
-    # 각 PK당 하나의 행만 남기되, 기출문제 정보들을 리스트로 통합
-    questions_grouped = df_q.groupby("PK").apply(lambda x: x.to_dict('records')).reset_index(name='related_questions')
+    # 기출문제 데이터를 PK별로 그룹화하여 리스트로 통합
+    questions_grouped = df_q.groupby("PK").apply(lambda x: x.to_dict('records'), include_groups=False).reset_index(name='related_questions')
     
     # 개념 데이터와 그룹화된 기출문제 데이터를 병합
     final_df = df_c.merge(questions_grouped, on="PK", how="left")
     return final_df
 
-# 위에서 정의한 함수로 데이터 로드
+# 변수 정의가 누락되었다면 다시 추가합니다.
+CONCEPT_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=775019664"
+QUESTION_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=46086374"
+
+# 데이터 로드 실행
 df = load_and_group_data(CONCEPT_URL, QUESTION_URL)
 
 # --------------------------------------------------
