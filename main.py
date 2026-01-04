@@ -464,11 +464,25 @@ else:
                             
                             options_content = "".join(options_html_list)
                             options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
-                        
+
+
+                        # --- [수정 시작] 정답 표시를 깔끔하게 변경 ---
                         answer_html = ""
                         if pd.notna(q_row.get("정답")):
-                            answer_html = f"<div style='margin-top: 12px; color: #155724; background-color: #d4edda; padding: 6px 12px; border-radius: 4px; font-size: 0.9em; display: inline-block; font-weight: bold;'>✅ 정답: {q_row['정답']}</div>"
+                            # 소수점 제거 처리 (예: 3.0 -> 3)
+                            try:
+                                ans_val = int(float(q_row['정답']))
+                            except:
+                                ans_val = q_row['정답']
+                            
+                            # 보기와 같은 색상과 크기로 정답 표시
+                            answer_html = f"""
+                            <div style='margin-top: 15px; color: #333; font-size: 0.95em; font-weight: bold;'>
+                                * 정답 : {ans_val}번
+                            </div>
+                            """
 
+                        # 전체 카드 구성
                         full_html = f"""
                         <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
                             {year_style}
@@ -478,6 +492,9 @@ else:
                         </div>
                         """
                         st.markdown(full_html, unsafe_allow_html=True)
+                        # --- [수정 끝] ---
+
+                        
         st.divider()
 
 # --------------------------------------------------
