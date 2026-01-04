@@ -1,5 +1,3 @@
-
-
 import streamlit as st
 import pandas as pd
 import uuid
@@ -427,7 +425,7 @@ else:
             st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
 
-        # --- 개념 내용 출력 ---
+      # --- 개념 내용 출력 ---
         if pd.notna(row.get("내용")):
             content_raw = str(row["내용"])
             
@@ -443,7 +441,7 @@ else:
                     if line.strip():
                         # 리스트 모드일 때도 <br>을 실제 줄바꿈으로 변환
                         clean_line = line.strip().replace("<br>", "<br/>")
-                        html_content += f<li style='margin-bottom: 2px; line-height: 1.4;'>{clean_line}</li>
+                        html_content += f<li style='margin-bottom: 2px; line-height: 1.4;'>{clean_line}</li>"
                 html_content += "</ul>"
                 st.markdown(html_content, unsafe_allow_html=True)
     
