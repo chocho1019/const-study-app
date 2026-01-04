@@ -117,10 +117,17 @@ hr { margin: 1.5rem 0; }
 # --------------------------------------------------
 # 3. 데이터 로드
 # --------------------------------------------------
-# @st.cache_data
+
+@st.cache_data
 def load_sheet(csv_url):
     df = pd.read_csv(csv_url)
     df.columns = df.columns.str.strip()
+    
+    # --- 이 줄을 추가하세요! ---
+    df = df.fillna("") 
+    # fillna("")는 "NaN(빈칸)을 ""(빈 문자열)로 채워라"라는 뜻입니다.
+    # -----------------------
+
     df["PK"] = df["PK"].astype(str).str.strip()
     return df
 
