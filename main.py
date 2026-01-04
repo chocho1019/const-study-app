@@ -1,4 +1,5 @@
 
+
 import streamlit as st
 import pandas as pd
 import uuid
@@ -393,16 +394,13 @@ elif view_mode == "🃏 암기카드":
 # ==================================================
 # 📚 전체 학습 / 즐겨찾기
 # ==================================================
-
-
 else:
-    # PK 기준으로 개념은 1번만 표시
-unique_df = filtered_df.drop_duplicates(subset="PK", keep="first")
+    # 데이터가 중복 표시되지 않도록 PK별로 그룹화
+    grouped_df = filtered_df.groupby("PK", sort=False)
 
-for _, row in unique_df.iterrows():
-    pk = str(row["PK"])
-    is_fav = pk in st.session_state.favorites
-
+    for pk, group in grouped_df:
+        row = group.iloc[0]
+        is_fav = pk in st.session_state.favorites
 
 
         col_heart, col_title = st.columns([0.05, 0.95])
@@ -466,69 +464,59 @@ for _, row in unique_df.iterrows():
 
 
         
-        # --- 📝 기출문제 영역 (PK 기준 안정 버전) ---
-st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        # --- 📝 기출문제 영역 --- 
+        has_question = group['기출문제(질문)'].notna().any()
+        
+        if has_question:
+            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+            # 기출문제가 있을 때는 기존 로직 그대로 실행
+            with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
+                for _, q_row in group.iterrows():
+                    if pd.notna(q_row.get("기출문제(질문)")):
+                        year = q_row.get("기출문제(출제년도)", "연도 미상")
+                        year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
+                        question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
+                        
+                        # --- [기출문제 보기 우선순위 출력 로직] ---
+                        options_text = ""
+                        if pd.notna(q_row.get("기출문제(보기)")) and str(q_row["기출문제(보기)"]).strip() not in ["", "0", "nan", "None"]:
+                            raw_options = str(q_row['기출문제(보기)']).split('\n')
+                            valid_options = [opt.strip() for opt in raw_options if opt.strip()]
+                            circ_nums = ["①", "②", "③", "④", "⑤"]
+                            options_html_list = []
+                            for idx, opt in enumerate(valid_options):
+                                if idx < len(circ_nums):
+                                    options_html_list.append(f"<div style='margin-bottom: 3px;'>{circ_nums[idx]} {opt}</div>")
+                                else:
+                                    options_html_list.append(f"<div style='margin-bottom: 3px;'>- {opt}</div>")
+                            options_content = "".join(options_html_list)
+                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
+                        elif pd.notna(q_row.get("기출문제(보기1)")) and str(q_row["기출문제(보기1)"]).strip() not in ["", "0", "nan", "None"]:
+                            opt1_content = str(q_row["기출문제(보기1)"]).replace('\n', '<br>')
+                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{opt1_content}</div>"
+                        elif pd.notna(q_row.get("기출문제(보기2)")) and str(q_row["기출문제(보기2)"]).strip() not in ["", "0", "nan", "None"]:
+                            opt2_content = str(q_row["기출문제(보기2)"]).replace('\n', '<br>')
+                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{opt2_content}</div>"
 
-# 해당 PK의 기출문제만 별도 조회
-question_rows = df_question[df_question["PK"] == pk]
-question_rows = question_rows[question_rows["기출문제(질문)"].notna()]
+                        # --- [정답 처리 로직] ---
+                        ans_display = ""
+                        if pd.notna(q_row.get("정답")):
+                            try: ans_val = int(float(q_row['정답']))
+                            except: ans_val = q_row['정답']
+                            ans_display = f"<div style='margin-top: 15px; padding-left: 15px; color: #333; font-size: 0.95em; font-weight: normal;'> * 정답 : {ans_val}번</div>"
 
-q_count = len(question_rows)
-
-with st.expander(f"📝 관련 기출문제 ({q_count}건)"):
-    if q_count == 0:
-        st.write("등록된 관련 기출문제가 없습니다.")
-    else:
-        for _, q_row in question_rows.iterrows():
-            year = q_row.get("기출문제(출제년도)", "연도 미상")
-            year_style = (
-                f"<span style='color:#888;font-size:0.75em;font-weight:bold;'>"
-                f"[{year} 출제]</span>"
-            )
-
-            question_text = (
-                f"<div style='margin-top:5px;font-weight:bold;color:#004085;'>"
-                f"Q. {q_row['기출문제(질문)']}</div>"
-            )
-
-            # --- 보기 처리 ---
-            options_text = ""
-            if pd.notna(q_row.get("기출문제(보기)")):
-                raw_opts = [
-                    o.strip() for o in str(q_row["기출문제(보기)"]).split("\n")
-                    if o.strip()
-                ]
-                circ = ["①", "②", "③", "④", "⑤"]
-                opts_html = ""
-                for i, opt in enumerate(raw_opts):
-                    prefix = circ[i] if i < len(circ) else "-"
-                    opts_html += f"<div>{prefix} {opt}</div>"
-
-                options_text = (
-                    f"<div style='margin-top:10px;padding-left:5px;'>"
-                    f"{opts_html}</div>"
-                )
-
-            # --- 정답 ---
-            ans_html = ""
-            if pd.notna(q_row.get("정답")):
-                try:
-                    ans = int(float(q_row["정답"]))
-                except:
-                    ans = q_row["정답"]
-                ans_html = f"<div style='margin-top:10px;'>* 정답 : {ans}번</div>"
-
-            full_html = f"""
-            <div style="background:#f1f8ff;padding:18px;border-radius:10px;
-                        margin-bottom:15px;border:1px solid #cce5ff;">
-                {year_style}
-                {question_text}
-                {options_text}
-                {ans_html}
-            </div>
-            """
-            st.markdown(full_html, unsafe_allow_html=True)
-
+                        # 전체 문제 박스 출력
+                        full_html = f"""
+                        <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
+                            {year_style} {question_text} {options_text} {ans_display}
+                        </div>
+                        """
+                        st.markdown(full_html, unsafe_allow_html=True)
+        else:
+            # 💡 이 부분이 추가된 핵심입니다! 기출이 없어도 펼침창(Expander)을 보여줍니다.
+            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+            with st.expander("📝 관련 기출문제 (0건)"):
+                st.write("등록된 관련 기출문제가 없습니다.")
 
     
                   
