@@ -219,7 +219,7 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
 
     
 # --------------------------------------------------
-# 6. 사이드바 필터 (상단 배치)
+# 6. 사이드바 필터 (정렬 순서 수정 버전)
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
 
@@ -231,10 +231,13 @@ view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암
 
 filtered_df = df.copy()
 
-# 카테고리 필터링
+# 카테고리 필터링 (구글 시트 순서 유지)
 for col, label in [("과목", "과목"), ("대카테고리", "대카테고리"), ("소카테고리", "소카테고리")]:
     if col in filtered_df.columns:
-        options = ["전체"] + sorted(filtered_df[col].dropna().unique())
+        # sorted()를 제거하여 시트에 입력된 순서대로 가져옵니다.
+        # .unique()는 데이터프레임에 등장하는 순서를 유지합니다.
+        options = ["전체"] + list(filtered_df[col].dropna().unique())
+        
         sel = st.sidebar.selectbox(f"{label} 선택", options)
         if sel != "전체":
             filtered_df = filtered_df[filtered_df[col] == sel]
