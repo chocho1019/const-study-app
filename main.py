@@ -115,34 +115,22 @@ hr { margin: 1.5rem 0; }
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------
-# 3. 데이터 로드 (함수 복구 및 수정 버전)
+# 3. 데이터 로드
 # --------------------------------------------------
-
-# 삭제되었던 기본 로드 함수를 다시 추가해야 합니다.
+@st.cache_data
 def load_sheet(csv_url):
     df = pd.read_csv(csv_url)
     df.columns = df.columns.str.strip()
     df["PK"] = df["PK"].astype(str).str.strip()
     return df
 
-@st.cache_data
-def load_and_group_data(concept_url, question_url):
-    df_c = load_sheet(concept_url)
-    df_q = load_sheet(question_url)
-    
-    # 기출문제 데이터를 PK별로 그룹화하여 리스트로 통합
-    questions_grouped = df_q.groupby("PK").apply(lambda x: x.to_dict('records'), include_groups=False).reset_index(name='related_questions')
-    
-    # 개념 데이터와 그룹화된 기출문제 데이터를 병합
-    final_df = df_c.merge(questions_grouped, on="PK", how="left")
-    return final_df
-
-# 변수 정의가 누락되었다면 다시 추가합니다.
 CONCEPT_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=775019664"
 QUESTION_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=46086374"
 
-# 데이터 로드 실행
-df = load_and_group_data(CONCEPT_URL, QUESTION_URL)
+df_concept = load_sheet(CONCEPT_URL)
+df_question = load_sheet(QUESTION_URL)
+
+df = df_concept.merge(df_question, on="PK", how="left")
 
 # --------------------------------------------------
 # 4. 초기 사용자 인증 처리 (데이터 접근 제어)
@@ -362,44 +350,34 @@ else:
             st.write(row["내용"])
 
 
-       # 📝 [여기가 수정할 위치입니다] 기출문제 확인 섹션
+        # 📝 기출문제 (간격 수정 버전)
         with st.expander("📝 관련 기출문제 확인"):
-            # 1. 해당 개념(PK)에 연결된 기출문제 리스트를 가져옵니다.
-            related_qs = row.get("related_questions")
-            
-            # 2. 기출문제가 리스트 형태로 존재할 때만 반복문을 실행합니다.
-            if isinstance(related_qs, list):
-                for q_idx, q_row in enumerate(related_qs):
-                    year = q_row.get("기출문제(출제년도)", "연도 미상")
-                    year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
-                    question_text = f"<div style='margin-top: 10px; font-weight: bold; color: #004085;'>Q. {q_row.get('기출문제(질문)','')}</div>"
-                    
-                    options_text = ""
-                    if pd.notna(q_row.get("기출문제(보기)")):
-                        options_content = str(q_row['기출문제(보기)']).replace("\n", "<br>")
-                        options_text = f"<div style='margin-top: 10px; color: #004085;'>{options_content}</div>"
-                    
-                    # 기출문제 박스 렌더링
-                    full_html = f"""
-                    <div class="q-box">
-                        {year_style}
-                        {question_text}
-                        {options_text}
-                    </div>
-                    """
-                    st.markdown(full_html, unsafe_allow_html=True)
+            if pd.notna(row.get("기출문제(질문)")):
+                year = row.get("기출문제(출제년도)", "연도 미상")
+                year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
+                question_text = f"<div style='margin-top: 10px; font-weight: bold; color: #004085;'>Q. {row['기출문제(질문)']}</div>"
+                
+                options_text = ""
+                if pd.notna(row.get("기출문제(보기)")):
+                    options_content = str(row['기출문제(보기)']).replace("\n", "<br>")
+                    options_text = f"<div style='margin-top: 10px; color: #004085;'>{options_content}</div>"
+                
+                # q-box 클래스를 사용하여 상단 마진(간격) 부여
+                full_html = f"""
+                <div class="q-box">
+                    {year_style}
+                    {question_text}
+                    {options_text}
+                </div>
+                """
+                st.markdown(full_html, unsafe_allow_html=True)
 
-                    if pd.notna(q_row.get("정답")):
-                        st.info(f"정답: {q_row['정답']}")
-                    
-                    # 여러 문제일 경우 문제 사이에 구분선을 넣습니다 (마지막 문제는 제외)
-                    if q_idx < len(related_qs) - 1:
-                        st.divider()
-            else:
-                st.write("관련 기출문제가 없습니다.")
+                if pd.notna(row.get("정답")):
+                    st.write("") # 정답 박스 앞 여백
+                    st.success(f"정답: {row['정답']}")
 
-        st.divider() # 개념 간의 구분선
-    
+                
+        st.divider()
 
 # --------------------------------------------------
 # 8. 하단 로고 (코드의 가장 마지막에 배치)
