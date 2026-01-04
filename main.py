@@ -476,10 +476,14 @@ else:
                             except:
                                 ans_val = q_row['정답']
                             
-                            # 깔끔한 텍스트 형식으로 생성
-                            ans_display = f"<div style='margin-top: 15px; color: #333; font-size: 0.95em; font-weight: bold;'>* 정답 : {ans_val}번</div>"
+                            # 굵은 글씨 해제(font-weight 삭제) 및 들여쓰기(padding-left) 추가
+                            ans_display = f"""
+                            <div style='margin-top: 15px; padding-left: 15px; color: #333; font-size: 0.95em;'>
+                                * 정답 : {ans_val}번
+                            </div>
+                            """
 
-                        # 전체 문제 박스 구성 (태그가 깨지지 않게 변수를 미리 조립)
+                        # 전체 문제 박스 구성
                         full_html = f"""
                         <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
                             {year_style}
@@ -488,9 +492,7 @@ else:
                             {ans_display}
                         </div>
                         """
-                        # 최종 출력
                         st.markdown(full_html, unsafe_allow_html=True)
-                        
 
                         
         st.divider()
