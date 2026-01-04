@@ -7,6 +7,17 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # --------------------------------------------------
+# 추가: 이미지 URL 변환 함수 (기존 코드에 없어서 추가했습니다)
+# --------------------------------------------------
+def get_direct_url(url):
+    if "drive.google.com" in url:
+        # 구글 드라이브 링크를 직접 다운로드 링크로 변환
+        if "file/d/" in url:
+            file_id = url.split("file/d/")[1].split("/")[0]
+            return f"https://docs.google.com/uc?export=view&id={file_id}"
+    return url
+    
+# --------------------------------------------------
 # Google Sheet 연결
 # --------------------------------------------------
 SCOPE = [
@@ -356,14 +367,12 @@ else:
             html_content += "</ul>"
             st.markdown(html_content, unsafe_allow_html=True)
 
-        
-        # --- 개념 내용 출력 아래에 추가 ---
+       # --- 이미지 출력 영역 (수정된 부분) ---
         if pd.notna(row.get("이미지URL")) and str(row["이미지URL"]).strip():
             image_raw_url = str(row["이미지URL"]).strip()
-        if image_raw_url.startswith("http"):
-        # 여기서 함수를 호출하여 변환된 주소를 사용합니다!
-        image_url = get_direct_url(image_raw_url)
-        st.image(image_url, use_container_width=True)
+            if image_raw_url.startswith("http"): # 이 줄 아래로 들여쓰기 확인
+                image_url = get_direct_url(image_raw_url)
+                st.image(image_url, use_container_width=True)
         
 
 
