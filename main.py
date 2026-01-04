@@ -24,28 +24,35 @@ def get_direct_url(url):
     return url
     
 # --------------------------------------------------
-# Google Sheet 연결
+# Google Sheet 연결 (연결 안정화 버전)
 # --------------------------------------------------
 SCOPE = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
-    scopes=SCOPE
-)
+SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
 
 @st.cache_resource
-def get_fav_sheet():
-    try:
-        gc = gspread.authorize(creds)
-        doc = gc.open_by_key(SPREADSHEET_ID)
-        return doc.worksheet("favorites")
-    except:
-        return None
+def get_gspread_client():
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=SCOPE
+    )
+    return gspread.authorize(creds)
 
-fav_sheet = get_fav_sheet()
+# 전역 변수로 설정
+gc = get_gspread_client()
+
+@st.cache_resource
+def get_working_sheets():
+    try:
+        doc = gc.open_by_key(SPREADSHEET_ID)
+        return doc.worksheet("users"), doc.worksheet("favorites")
+    except Exception as e:
+        return None, None
+
+user_sheet, fav_sheet = get_working_sheets()
 
 
 # --------------------------------------------------
@@ -158,13 +165,16 @@ df = df_concept.merge(df_question, on="PK", how="left")
 # --------------------------------------------------
 # 4. 초기 사용자 인증 처리 (개선된 버전)
 # --------------------------------------------------
-@st.cache_data(ttl=600)  # 10분 동안 유저 목록을 기억하여 API 호출을 줄입니다.
+@st.cache_data(ttl=600)
 def get_allowed_emails():
     try:
-        u_sheet = sheet.worksheet("users")
-        return [e.strip() for e in u_sheet.col_values(1)[1:] if e.strip()]
+        # 위에서 정의한 user_sheet를 직접 사용합니다.
+        if user_sheet:
+            return [e.strip() for e in user_sheet.col_values(1)[1:] if e.strip()]
+        return None
     except Exception as e:
         return None
+    
 
 # 세션에 이미 사용자 ID가 있다면 허용 목록 확인을 건너뜁니다.
 user_email = st.session_state.get('user_id', "").strip()
@@ -292,27 +302,26 @@ elif view_mode == "🃏 암기카드":
     # 2. 즐겨찾기 버튼 (API 부하 감소 버전)
     col_h, _ = st.columns([0.1, 0.9])
     with col_h:
-        if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
+        if st.button("💛" if is_fav else "🤍", key=f"some_unique_key_{pk}"):
             now = datetime.datetime.now().isoformat()
-            if is_fav:
-                # [개선] 시트에서 삭제하는 로직이 API를 너무 많이 쓰므로 예외처리 강화
-                try:
-                    st.session_state.favorites.remove(pk) # 화면에서 즉시 반영
-                    cells = fav_sheet.findall(pk)
-                    for c in cells:
-                        # 첫 번째 컬럼(A열)이 유저ID인 행만 삭제
-                        if fav_sheet.cell(c.row, 1).value == USER_ID:
-                            fav_sheet.delete_rows(c.row)
-                            break
-                except:
-                    st.warning("로그 기록 중입니다. 잠시 후 새로고침 해주세요.")
-            else:
-                try:
-                    st.session_state.favorites.add(pk) # 화면에서 즉시 반영
+            try:
+                if is_fav:
+                    st.session_state.favorites.remove(pk) # 화면에서 먼저 지우기
+                    # 시트 삭제는 에러가 나더라도 앱이 멈추지 않게 처리
+                    try:
+                        cells = fav_sheet.findall(pk)
+                        for c in cells:
+                            if fav_sheet.cell(c.row, 1).value == USER_ID:
+                                fav_sheet.delete_rows(c.row)
+                                break
+                    except:
+                        pass 
+                else:
+                    st.session_state.favorites.add(pk) # 화면에 먼저 표시
                     fav_sheet.append_row([USER_ID, pk, now])
-                except:
-                    st.error("구글 서버 응답이 지연되고 있습니다.")
-            st.rerun()
+                st.rerun()
+            except Exception as e:
+                st.error("구글 시트 응답이 지연되고 있습니다. 잠시 후 시도해주세요.")
 
     
 
