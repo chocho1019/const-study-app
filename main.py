@@ -436,13 +436,23 @@ else:
                 pass
 
 
-        # --- [기출문제 보기 & 보기2 선택 출력 로직] ---
+        # --- 📝 기출문제 영역 --- 
+        has_question = group['기출문제(질문)'].notna().any()
+        if has_question:
+            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+            with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
+                for _, q_row in group.iterrows():
+                    if pd.notna(q_row.get("기출문제(질문)")):
+                        year = q_row.get("기출문제(출제년도)", "연도 미상")
+                        year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
+                        question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
+                        
+                        # --- [기출문제 보기 & 보기2 선택 출력 로직] ---
                         options_text = ""
                         
-                        # 1. '기출문제(보기2)' 원문 우선 확인 (비어있지 않으면 그대로 출력)
+                        # 1. '기출문제(보기2)' 원문 우선 확인
                         manual_options = q_row.get("기출문제(보기2)")
-                        if pd.notna(manual_options) and str(manual_options).strip() not in ["", "0", "nan"]:
-                            # 수기 입력인 경우 줄바꿈(\n)을 HTML 줄바꿈(<br>)으로 변환하여 그대로 출력
+                        if pd.notna(manual_options) and str(manual_options).strip() not in ["", "0", "nan", "None"]:
                             options_content = str(manual_options).replace('\n', '<br>')
                             options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{options_content}</div>"
                         
@@ -450,7 +460,6 @@ else:
                         elif pd.notna(q_row.get("기출문제(보기)")):
                             raw_options = str(q_row['기출문제(보기)']).split('\n')
                             valid_options = [opt.strip() for opt in raw_options if opt.strip()]
-                            
                             circ_nums = ["①", "②", "③", "④", "⑤"]
                             options_html_list = []
                             for idx, opt in enumerate(valid_options):
@@ -458,7 +467,6 @@ else:
                                     options_html_list.append(f"<div style='margin-bottom: 3px;'>{circ_nums[idx]} {opt}</div>")
                                 else:
                                     options_html_list.append(f"<div style='margin-bottom: 3px;'>- {opt}</div>")
-                            
                             options_content = "".join(options_html_list)
                             options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
 
@@ -466,28 +474,10 @@ else:
                         ans_display = ""
                         if pd.notna(q_row.get("정답")):
                             try:
-                                # 소수점 제거 (3.0 -> 3)
                                 ans_val = int(float(q_row['정답']))
                             except:
                                 ans_val = q_row['정답']
-                            
-                            # font-weight: normal(얇게), padding-left: 15px(들여쓰기)
-                            ans_display = f"""
-                            <div style='margin-top: 15px; padding-left: 15px; color: #333; font-size: 0.95em; font-weight: normal;'>
-                                * 정답 : {ans_val}번
-                            </div>
-                            """
-
-                        # --- 전체 문제 박스 구성 및 출력 ---
-                        full_html = f"""
-                        <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
-                            {year_style}
-                            {question_text}
-                            {options_text}
-                            {ans_display}
-                        </div>
-                        """
-                        st.markdown(full_html, unsafe_allow_html=True)
+                            ans_display = f"
 
                         
         st.divider()
