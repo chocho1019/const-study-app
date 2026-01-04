@@ -436,10 +436,9 @@ else:
                 pass
 
 
-        # --- 📝 기출문제 영역 --- 
+       # --- 📝 기출문제 영역 --- 
         has_question = group['기출문제(질문)'].notna().any()
         if has_question:
-            # 이 줄을 추가하여 개념 내용과 기출문제 토글 사이 간격을 띄웁니다.
             st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
             with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
                 for _, q_row in group.iterrows():
@@ -448,17 +447,30 @@ else:
                         year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
                         question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
                         
+                        # --- [수정] 보기 자동 번호 매기기 로직 ---
                         options_text = ""
                         if pd.notna(q_row.get("기출문제(보기)")):
-                            options_content = str(q_row['기출문제(보기)']).replace("\n", "<br>")
-                            options_text = f"<div style='margin-top: 5px; color: #333; font-size: 0.95em;'>{options_content}</div>"
+                            raw_options = str(q_row['기출문제(보기)']).split('\n')
+                            # 공백 라인 제외하고 실제 텍스트가 있는 줄만 처리
+                            valid_options = [opt.strip() for opt in raw_options if opt.strip()]
+                            
+                            circ_nums = ["①", "②", "③", "④", "⑤"]
+                            options_html_list = []
+                            for idx, opt in enumerate(valid_options):
+                                if idx < len(circ_nums):
+                                    options_html_list.append(f"<div style='margin-bottom: 3px;'>{circ_nums[idx]} {opt}</div>")
+                                else:
+                                    options_html_list.append(f"<div style='margin-bottom: 3px;'>- {opt}</div>")
+                            
+                            options_content = "".join(options_html_list)
+                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
                         
                         answer_html = ""
                         if pd.notna(q_row.get("정답")):
-                            answer_html = f"<div style='margin-top: 8px; color: #155724; background-color: #d4edda; padding: 5px 10px; border-radius: 4px; font-size: 0.9em;'>✅ 정답: {q_row['정답']}</div>"
+                            answer_html = f"<div style='margin-top: 12px; color: #155724; background-color: #d4edda; padding: 6px 12px; border-radius: 4px; font-size: 0.9em; display: inline-block; font-weight: bold;'>✅ 정답: {q_row['정답']}</div>"
 
                         full_html = f"""
-                        <div style="background-color: #f1f8ff; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #cce5ff;">
+                        <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
                             {year_style}
                             {question_text}
                             {options_text}
