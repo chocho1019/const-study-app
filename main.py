@@ -359,7 +359,7 @@ else:
         if has_question:
             # 이 줄을 추가하여 개념 내용과 기출문제 토글 사이 간격을 띄웁니다.
             st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-            with st.expander(f"📝 관련 기출문제 확인 ({len(group)}건)"):
+            with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
                 for _, q_row in group.iterrows():
                     if pd.notna(q_row.get("기출문제(질문)")):
                         year = q_row.get("기출문제(출제년도)", "연도 미상")
