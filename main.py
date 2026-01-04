@@ -6,13 +6,6 @@ import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
-def get_direct_url(url):
-    if "drive.google.com" in url:
-        if "/file/d/" in url:
-            file_id = url.split("/file/d/")[1].split("/")[0]
-            return f"https://drive.google.com/uc?export=view&id={file_id}"
-    return url
-
 # --------------------------------------------------
 # Google Sheet 연결
 # --------------------------------------------------
@@ -254,7 +247,7 @@ if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 
 # ==================================================
-# 🃏 암기카드 모드 (이미지 표시 기능 추가)
+# 🃏 암기카드 모드 (카테고리 표시 + 클릭 필터 추가)
 # ==================================================
 elif view_mode == "🃏 암기카드":
     total = len(filtered_df)
@@ -284,7 +277,7 @@ elif view_mode == "🃏 암기카드":
                 st.session_state.favorites.add(pk)
             st.rerun()
 
-    # 3. 개념 박스
+    # 3. 개념 박스 (글머리 기호 및 줄 간격 수정 적용)
     title_text = row.get('개념','제목 없음')
     content_raw = row.get('내용','') if pd.notna(row.get('내용')) else ""
     
@@ -294,6 +287,7 @@ elif view_mode == "🃏 암기카드":
         content_html = "<ul style='padding-left: 20px; margin-top: 0; color: #333;'>"
         for line in lines:
             if line.strip():
+                # 수정된 부분: f 다음에 따옴표 추가
                 content_html += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
         content_html += "</ul>"
 
@@ -305,12 +299,6 @@ elif view_mode == "🃏 암기카드":
     """
     st.markdown(card_html, unsafe_allow_html=True)
     
-    # --- [이미지 표시] ---
-    if pd.notna(row.get("이미지URL")) and str(row["이미지URL"]).strip():
-        img_url = get_direct_url(str(row["이미지URL"]).strip())
-        if img_url.startswith("http"):
-            st.image(img_url, use_container_width=True)
-
     # 4. 하단 네비게이션 버튼
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
@@ -326,7 +314,7 @@ elif view_mode == "🃏 암기카드":
             st.rerun()
 
 # ==================================================
-# 📚 전체 학습 / 즐겨찾기 (이미지 및 빈칸 오류 수정)
+# 📚 전체 학습 / 즐겨찾기
 # ==================================================
 else:
     grouped_df = filtered_df.groupby("PK", sort=False)
@@ -354,31 +342,39 @@ else:
         with col_title:
             st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-        # --- 개념 내용 출력 ---
+        
+        # --- 개념 내용 출력 (글머리 기호 및 줄 간격 수정) ---
         if pd.notna(row.get("내용")):
             content_raw = str(row["내용"])
             lines = content_raw.split('\n')
+            
             html_content = "<ul style='padding-left: 20px; margin-bottom: 0; color: #333;'>"
             for line in lines:
                 if line.strip():
+                    # 수정된 부분: f 다음에 따옴표 추가
                     html_content += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
             html_content += "</ul>"
             st.markdown(html_content, unsafe_allow_html=True)
 
-        # --- 이미지 출력 ---
+        
+        # --- 개념 내용 출력 아래에 추가 ---
         if pd.notna(row.get("이미지URL")) and str(row["이미지URL"]).strip():
             image_raw_url = str(row["이미지URL"]).strip()
-            if image_raw_url.startswith("http"):
-                image_url = get_direct_url(image_raw_url)
-                st.image(image_url, use_container_width=True)
+        if image_raw_url.startswith("http"):
+        # 여기서 함수를 호출하여 변환된 주소를 사용합니다!
+        image_url = get_direct_url(image_raw_url)
+        st.image(image_url, use_container_width=True)
+        
+
 
         # --- 📝 기출문제 영역 --- 
         has_question = group['기출문제(질문)'].notna().any()
         if has_question:
+            # 이 줄을 추가하여 개념 내용과 기출문제 토글 사이 간격을 띄웁니다.
             st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
             with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
                 for _, q_row in group.iterrows():
-                    if pd.notna(q_row.get("기출문제(질문)")) and str(q_row.get("기출문제(질문)")).strip() != "":
+                    if pd.notna(q_row.get("기출문제(질문)")):
                         year = q_row.get("기출문제(출제년도)", "연도 미상")
                         year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
                         question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
