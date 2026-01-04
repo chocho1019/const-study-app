@@ -466,33 +466,31 @@ else:
                             options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
 
 
-                        # --- [수정 시작] 정답 표시를 깔끔하게 변경 ---
-                        answer_html = ""
+                        
+                        # --- [정답 처리 로직 정리] ---
+                        ans_display = ""
                         if pd.notna(q_row.get("정답")):
-                            # 소수점 제거 처리 (예: 3.0 -> 3)
                             try:
+                                # 소수점 제거 (3.0 -> 3)
                                 ans_val = int(float(q_row['정답']))
                             except:
                                 ans_val = q_row['정답']
                             
-                            # 보기와 같은 색상과 크기로 정답 표시
-                            answer_html = f"""
-                            <div style='margin-top: 15px; color: #333; font-size: 0.95em; font-weight: bold;'>
-                                * 정답 : {ans_val}번
-                            </div>
-                            """
+                            # 깔끔한 텍스트 형식으로 생성
+                            ans_display = f"<div style='margin-top: 15px; color: #333; font-size: 0.95em; font-weight: bold;'>* 정답 : {ans_val}번</div>"
 
-                        # 전체 카드 구성
+                        # 전체 문제 박스 구성 (태그가 깨지지 않게 변수를 미리 조립)
                         full_html = f"""
                         <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
                             {year_style}
                             {question_text}
                             {options_text}
-                            {answer_html}
+                            {ans_display}
                         </div>
                         """
+                        # 최종 출력
                         st.markdown(full_html, unsafe_allow_html=True)
-                        # --- [수정 끝] ---
+                        
 
                         
         st.divider()
