@@ -152,23 +152,29 @@ df_question = load_sheet(QUESTION_URL)
 df = df_concept.merge(df_question, on="PK", how="left")
 
 # --------------------------------------------------
-# 4. 초기 사용자 인증 처리 (데이터 접근 제어)
+# 4. 초기 사용자 인증 처리 (개선된 버전)
 # --------------------------------------------------
-# 'users' 시트에서 허용된 이메일 목록 가져오기
-try:
-    user_sheet = sheet.worksheet("users")
-    ALLOWED_EMAILS = [e.strip() for e in user_sheet.col_values(1)[1:] if e.strip()]
-except Exception as e:
-    st.error("구글 시트에 'users' 탭이 없거나 설정을 확인해주세요.")
-    st.stop()
+@st.cache_data(ttl=600)  # 10분 동안 유저 목록을 기억하여 API 호출을 줄입니다.
+def get_allowed_emails():
+    try:
+        u_sheet = sheet.worksheet("users")
+        return [e.strip() for e in u_sheet.col_values(1)[1:] if e.strip()]
+    except Exception as e:
+        return None
 
-# 세션에 저장된 이메일 확인
+# 세션에 이미 사용자 ID가 있다면 허용 목록 확인을 건너뜁니다.
 user_email = st.session_state.get('user_id', "").strip()
 
-# 만약 로그인이 안 되어 있다면 로그인 창만 보여주고 중단
-if not user_email or user_email not in ALLOWED_EMAILS:
+if not user_email:
+    ALLOWED_EMAILS = get_allowed_emails()
+    
+    if ALLOWED_EMAILS is None:
+        st.error("⚠️ 구글 시트 연결 오류: 'users' 탭을 찾을 수 없거나 권한이 없습니다.")
+        st.stop()
+        
     st.sidebar.title("🔐 사용자 인증")
     input_email = st.sidebar.text_input("등록된 이메일을 입력하세요", key="login_input").strip()
+    
     if st.sidebar.button("로그인"):
         if input_email in ALLOWED_EMAILS:
             st.session_state.user_id = input_email
@@ -178,6 +184,7 @@ if not user_email or user_email not in ALLOWED_EMAILS:
     st.info("👈 왼쪽 사이드바에서 이메일로 로그인하면 학습을 시작할 수 있습니다.")
     st.stop()
 
+# 로그인 성공 후 변수 설정
 USER_ID = st.session_state.user_id
 
 
