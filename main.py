@@ -11,10 +11,17 @@ from google.oauth2.service_account import Credentials
 # --------------------------------------------------
 def get_direct_url(url):
     if "drive.google.com" in url:
-        # 구글 드라이브 링크를 직접 다운로드 링크로 변환
-        if "file/d/" in url:
+        # 1. 파일 ID 추출 (다양한 URL 형식 대응)
+        file_id = ""
+        if "id=" in url:
+            file_id = url.split("id=")[1].split("&")[0]
+        elif "file/d/" in url:
             file_id = url.split("file/d/")[1].split("/")[0]
-            return f"https://docs.google.com/uc?export=view&id={file_id}"
+        
+        if file_id:
+            # 2. 가장 안정적인 다이렉트 뷰 URL로 반환
+            return f"https://drive.google.com/uc?export=view&id={file_id}"
+            
     return url
     
 # --------------------------------------------------
@@ -367,13 +374,20 @@ else:
             html_content += "</ul>"
             st.markdown(html_content, unsafe_allow_html=True)
 
-       # --- 이미지 출력 영역 (수정된 부분) ---
-        if pd.notna(row.get("이미지URL")) and str(row["이미지URL"]).strip():
-            image_raw_url = str(row["이미지URL"]).strip()
-            if image_raw_url.startswith("http"): # 이 줄 아래로 들여쓰기 확인
-                image_url = get_direct_url(image_raw_url)
-                st.image(image_url, use_container_width=True)
-        
+
+        # --- 이미지 출력 영역 (수정 및 강화) ---
+    if "이미지URL" in row and pd.notna(row["이미지URL"]):
+        image_raw_url = str(row["이미지URL"]).strip()
+    
+    # 'nan' 문자열이나 빈 값 방지
+    if image_raw_url and image_raw_url.lower() != "nan":
+        image_url = get_direct_url(image_raw_url)
+        try:
+            # use_container_width는 최신 버전 기준, 이전 버전은 use_column_width=True
+            st.image(image_url, use_container_width=True)
+        except Exception as e:
+            st.warning(f"이미지를 불러올 수 없습니다. 링크를 확인해주세요.")
+            
 
 
         # --- 📝 기출문제 영역 --- 
