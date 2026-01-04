@@ -117,7 +117,7 @@ hr { margin: 1.5rem 0; }
 # --------------------------------------------------
 # 3. 데이터 로드
 # --------------------------------------------------
-@st.cache_data
+# @st.cache_data
 def load_sheet(csv_url):
     df = pd.read_csv(csv_url)
     df.columns = df.columns.str.strip()
