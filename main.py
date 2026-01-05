@@ -1,67 +1,10 @@
 import streamlit as st
-import subprocess
-import os
 import pandas as pd
 import uuid
 import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- [수정된 create_pdf 함수] ---
-def create_pdf(df_to_print):
-    # 1. 데이터 클렌징: NaN 제거 및 문자열 변환
-    df_clean = df_to_print.copy()
-    
-    # 2. 템플릿 설정 (서버에 한글 폰트가 없을 경우를 대비)
-    # 팁: 한글 깨짐 방지를 위해 font: "noto sans cjk kr" 등을 시도할 수 있으나 
-    # 일단 기본 설정으로 진행 후 깨지면 폰트 파일을 추가해야 합니다.
-    typst_template = f"""
-    #set page(paper: "a4", margin: 1cm)
-    #set text(size: 9pt) 
-    #show: columns.with(2)
-
-    #let concept_box(name, desc, example) = {{
-        rect(width: 100%, stroke: 0.5pt, fill: luma(240%))[* #name *]
-        table(
-            columns: (2fr, 1fr),
-            stroke: 0.5pt,
-            inset: 5pt,
-            [#desc], [#example]
-        )
-        v(0.5em)
-    }}
-    """
-
-    body = ""
-    # 현재 화면에 필터링된 데이터만 가져와서 PDF 작성
-    for _, row in df_clean.iterrows():
-        # 열 이름을 실제 시트 제목과 일치시킴 (개념, 내용, 기출문제(질문) 등)
-        name = str(row.get('개념', ' ')).replace('"', "'")
-        desc = str(row.get('내용', ' ')).replace('"', "'")
-        # 비고 대신 '소카테고리'나 '빈출' 정보를 넣어 가독성 높임
-        extra = str(row.get('소카테고리', ' ')).replace('"', "'")
-        
-        body += f"concept_box(\"{name}\", \"{desc}\", \"{extra}\")\n"
-
-    full_script = typst_template + body
-    
-    # 임시 파일 생성
-    typ_file = "book_temp.typ"
-    pdf_file = "result_temp.pdf"
-    
-    with open(typ_file, "w", encoding="utf-8") as f:
-        f.write(full_script)
-    
-    # PDF 컴파일 실행
-    result = subprocess.run(["typst", "compile", typ_file, pdf_file], capture_output=True, text=True)
-    
-    if result.returncode != 0:
-        raise Exception(f"Typst 에러: {result.stderr}")
-        
-    return pdf_file
-
-
-            
 # --------------------------------------------------
 # 추가: 이미지 URL 변환 함수 (기존 코드에 없어서 추가했습니다)
 # --------------------------------------------------
@@ -584,35 +527,3 @@ else:
 # --------------------------------------------------
 st.write("") 
 st.markdown("<div class='app-logo'>ⓒ초카이브 건축기사</div>", unsafe_allow_html=True)
-
-# --------------------------------------------------
-# 9. 다운로드 버튼
-# --------------------------------------------------
-st.divider() 
-st.subheader("📚 PDF 교재 만들기")
-st.info("현재 필터링된 **{}건**의 데이터를 PDF로 만듭니다.".format(len(filtered_df)))
-
-if st.button("전문가 스타일 PDF 생성"):
-    if filtered_df.empty:
-        st.warning("출력할 데이터가 없습니다. 필터를 확인해주세요.")
-    else:
-        try:
-            with st.spinner('고퀄리티 PDF 교재를 생성 중입니다... (약 10초 소요)'):
-                # 핵심 수정: 'df' 대신 필터링된 'filtered_df'를 전달
-                pdf_path = create_pdf(filtered_df) 
-                
-                if os.path.exists(pdf_path):
-                    with open(pdf_path, "rb") as f:
-                        st.download_button(
-                            label="📥 완성된 PDF 다운로드",
-                            data=f,
-                            file_name=f"건축기사_요약집_{datetime.datetime.now().strftime('%m%d')}.pdf",
-                            mime="application/pdf"
-                        )
-                    # 다운로드 후 임시 파일 삭제 (서버 용량 관리)
-                    os.remove(pdf_path)
-                else:
-                    st.error("PDF 파일이 생성되지 않았습니다.")
-        except Exception as e:
-            st.error(f"❌ PDF 생성 실패: {e}")
-            st.info("사유: 대부분 Streamlit 서버의 Typst 미설치 혹은 한글 폰트 문제입니다.")
