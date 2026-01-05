@@ -1,9 +1,45 @@
 import streamlit as st
+import subprocess
+import os
 import pandas as pd
 import uuid
 import datetime
 import gspread
 from google.oauth2.service_account import Credentials
+
+def create_pdf(df):
+    # 템플릿 설정 (서버에 한글 폰트가 없을 경우를 대비해 기본 폰트 설정)
+    typst_template = f"""
+    #set page(paper: "a4", margin: 1cm)
+    #set text(size: 9pt) 
+    #show: columns.with(2)
+
+    #let concept_box(name, desc, example) = {{
+        rect(width: 100%, stroke: 0.5pt, fill: luma(240%))[* #name *]
+        table(
+            columns: (2fr, 1fr),
+            stroke: 0.5pt,
+            inset: 5pt,
+            [#desc], [#example]
+        )
+        v(0.5em)
+    }}
+    """
+
+    body = ""
+    for _, row in df.iterrows():
+        # 사용자님 시트의 열 이름이 '개념', '내용', '비고'라고 가정함
+        name = str(row.get('개념', ' '))
+        desc = str(row.get('내용', ' '))
+        example = str(row.get('비고', ' '))
+        body += f"concept_box(\"{name}\", \"{desc}\", \"{example}\")\n"
+
+    full_script = typst_template + body
+    with open("book.typ", "w", encoding="utf-8") as f:
+        f.write(full_script)
+    
+    subprocess.run(["typst", "compile", "book.typ", "result.pdf"])
+    return "result.pdf"
 
 # --------------------------------------------------
 # 추가: 이미지 URL 변환 함수 (기존 코드에 없어서 추가했습니다)
@@ -527,3 +563,19 @@ else:
 # --------------------------------------------------
 st.write("") 
 st.markdown("<div class='app-logo'>ⓒ초카이브 건축기사</div>", unsafe_allow_html=True)
+
+# --------------------------------------------------
+# 9. 다운로드 버튼
+# --------------------------------------------------
+st.divider() 
+st.subheader("📚 PDF 교재 만들기")
+
+# 여기서 'df_concept' 부분은 사용자님이 시트 데이터를 담아둔 변수 이름으로 바꿔야 합니다!
+if st.button("전문가 스타일 PDF 생성"):
+    try:
+        # 만약 시트 데이터를 가져온 변수 이름이 df라면 그대로 쓰시면 됩니다.
+        pdf_path = create_pdf(df) 
+        with open(pdf_path, "rb") as f:
+            st.download_button("📥 완성된 PDF 다운로드", f, file_name="건축기사_개념서.pdf")
+    except Exception as e:
+        st.error(f"PDF 생성 중 에러가 발생했어요: {e}")
