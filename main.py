@@ -62,7 +62,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (업데이트됨)
+# 2. 스타일
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -103,13 +103,11 @@ st.markdown("""
     white-space: nowrap;        
 }
 
-/* 개념 본문 스타일 - 마크다운 렌더링을 위해 일부 스타일은 st.markdown 기본값 사용 */
-/* 대신 가독성을 위해 기본 p 태그 스타일을 미세 조정할 수 있습니다 */
 .element-container {
     color: #333;
 }
 
-/* 개념과 기출문제 사이의 간격 (요청사항 1 해결) */
+/* 개념과 기출문제 사이의 간격 */
 .section-gap {
     height: 30px;
     width: 100%;
@@ -190,7 +188,6 @@ def load_data():
         df = df.loc[:, ~df.columns.duplicated()]
         df.columns = df.columns.str.strip()
         
-        # FPK 처리 로직
         if "fpk" in df.columns and "PK" in df.columns:
             df["PK"] = df.apply(
                 lambda row: row["fpk"].strip() if (str(row["PK"]).strip() == "" or pd.isna(row["PK"])) and str(row.get("fpk", "")).strip() != "" 
@@ -225,7 +222,8 @@ if not user_email:
         st.stop()
         
     st.sidebar.title("🔐 사용자 인증")
-    input_email = st.sidebar.text_input("등록된 이메일을 입력하세요").strip()<br>    if st.sidebar.button("로그인"):
+    input_email = st.sidebar.text_input("등록된 이메일을 입력하세요").strip()
+    if st.sidebar.button("로그인"):
         if input_email in ALLOWED_EMAILS:
             st.session_state.user_id = input_email
             st.rerun()
@@ -275,26 +273,19 @@ if only_high_freq and freq_col in filtered_df.columns:
 if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
 else:
-    # PK를 기준으로 그룹화
     grouped = filtered_df.groupby("PK", sort=False)
     pk_list = list(grouped.groups.keys())
 
-    # --------------------------
-    # 헬퍼 함수: 타이틀/내용 생성
-    # --------------------------
     def render_concept_block(row, pk_val):
-        # 1. 타이틀 번호 처리
         num_val = str(row.get('숫구', '')).strip()
         if not num_val:
             num_val = pk_val
         else:
             num_val = num_val.replace(".0", "")
         
-        # 2. 빈출 데이터 가져오기 + '회' 추가
         freq_val = str(row.get('개념빈출', '')).strip()
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val else ""
 
-        # 타이틀 HTML (변경 없음)
         st.markdown(f"""
         <div class='title-row'>
             <div class='concept-title-text'>{num_val}) {row.get('구분','')}</div>
@@ -302,34 +293,21 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # 3. 개념 본문 (요청사항 2 & 3 해결)
-        # HTML div로 감싸지 않고, st.markdown을 직접 사용하여 표/볼드체 등이 나오게 함
-        # 줄바꿈 처리: \n을 "  \n" (공백2개+엔터)로 바꾸면 마크다운에서 '줄바꿈'으로 인식되며
-        # 문단 나눔(\n\n)이 아니므로 간격이 넓어지지 않고 자연스럽게 붙음.
         concept_txt = str(row.get('개념', ''))
+        # 마크다운 유지를 위해 2칸 공백 + 줄바꿈 사용
         concept_txt = concept_txt.replace('\n', '  \n') 
-        
         st.markdown(concept_txt)
 
-
-    # --------------------------
-    # 헬퍼 함수: 기출문제 생성
-    # --------------------------
     def render_questions(valid_qs):
-        # 요청사항 1 해결: 개념과 문제 사이에 간격을 주는 투명 div 삽입
         st.markdown("<div class='section-gap'></div>", unsafe_allow_html=True)
-        
         if not valid_qs.empty:
             with st.expander(f"📝 관련 기출문제 ({len(valid_qs)}건)"):
                 for _, q in valid_qs.iterrows():
-                    # 출제년도 처리
                     year_info = str(q.get('출제년도', '')).strip()
                     if not year_info:
                         year_info = str(q.get('문제빈도 출제년도', '')).strip()
                     
                     year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
-
-                    # 정답(보기) 줄바꿈 처리
                     answer_txt = str(q.get('정답', '')).replace('\n', '<br>')
 
                     st.markdown(f"""
@@ -340,10 +318,6 @@ else:
                     </div>
                     """, unsafe_allow_html=True)
 
-
-    # ==========================
-    # 뷰 모드: 암기카드
-    # ==========================
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
         if st.session_state.card_idx >= len(pk_list): st.session_state.card_idx = 0
@@ -352,35 +326,29 @@ else:
         group = grouped.get_group(pk)
         row = group.iloc[0]
         
-        # 카테고리 표시
         st.markdown(f"<div class='concept-category'>{row.get('과목','')} / {row.get('대카테고리','')}</div>", unsafe_allow_html=True)
         
         with st.container(border=True):
             render_concept_block(row, pk)
         
-        # 기출문제 표시
         valid_qs = group[group['문제'].str.strip() != ""]
         render_questions(valid_qs)
 
-        # 네비게이션
         c1, c2, c3 = st.columns([1,2,1])
-        if c1.button(" 이전 "): st.session_state.card_idx = max(0, st.session_state.card_idx-1); st.rerun()
+        if c1.button(" 이전 "): 
+            st.session_state.card_idx = max(0, st.session_state.card_idx-1)
+            st.rerun()
         c2.markdown(f"<p style='text-align:center; margin-top: 5px;'>{st.session_state.card_idx+1} / {len(pk_list)}</p>", unsafe_allow_html=True)
-        if c3.button(" 다음 "): st.session_state.card_idx = min(len(pk_list)-1, st.session_state.card_idx+1); st.rerun()
-
-    # ==========================
-    # 뷰 모드: 전체 학습 / 즐겨찾기
-    # ==========================
+        if c3.button(" 다음 "): 
+            st.session_state.card_idx = min(len(pk_list)-1, st.session_state.card_idx+1)
+            st.rerun()
     else:
         for pk, group in grouped:
             row = group.iloc[0]
-            
             with st.container():
                 render_concept_block(row, pk)
-                
                 valid_qs = group[group['문제'].str.strip() != ""]
                 render_questions(valid_qs)
-                
             st.divider()
 
 st.markdown("<div class='app-logo'>ⓒ초카이브 건축기사</div>", unsafe_allow_html=True)
