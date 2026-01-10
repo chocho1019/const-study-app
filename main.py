@@ -9,8 +9,9 @@ from google.oauth2.service_account import Credentials
 # 이미지 URL 변환 함수
 # --------------------------------------------------
 def get_direct_url(url):
-    if not isinstance(url, str):
+    if not isinstance(url, str) or not url.strip():
         return ""
+    # Google Drive 일반 공유 링크를 직접 링크로 변환
     if "drive.google.com" in url:
         file_id = ""
         if "id=" in url:
@@ -62,11 +63,10 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일
+# 2. 스타일 (기존 스타일 유지 및 미세 조정)
 # --------------------------------------------------
 st.markdown("""
 <style>
-/* 카드 기본 스타일 */
 .concept-card {
     background-color: #f8f9fa;
     padding: 20px;
@@ -74,8 +74,6 @@ st.markdown("""
     border: 1px solid #eee;
     margin-bottom: 20px;
 }
-
-/* 타이틀과 빈출 배지를 감싸는 컨테이너 (Flexbox) */
 .title-row {
     display: flex;
     justify-content: space-between;
@@ -84,15 +82,11 @@ st.markdown("""
     border-bottom: 2px solid #eaeaea; 
     padding-bottom: 8px;
 }
-
-/* 타이틀 텍스트 */
 .concept-title-text {
     font-size: 20px;
     font-weight: bold;
     color: #2E4053;
 }
-
-/* 빈출 배지 스타일 */
 .freq-badge {
     border: 1px solid #bbb;     
     color: #777;                
@@ -102,18 +96,10 @@ st.markdown("""
     font-weight: 500;
     white-space: nowrap;        
 }
-
-.element-container {
-    color: #333;
-}
-
-/* 개념과 기출문제 사이의 간격 */
 .section-gap {
-    height: 30px;
+    height: 25px;
     width: 100%;
 }
-
-/* 기출문제 박스 스타일 */
 .question-box {
     background-color: #f8f9fa;
     padding: 15px;
@@ -121,15 +107,11 @@ st.markdown("""
     margin-bottom: 12px;
     border: 1px solid #e0e0e0;
 }
-
-/* 기출문제 - 출제년도 */
 .q-year {
     color: #888;
     font-size: 12px;
     margin-bottom: 4px; 
 }
-
-/* 기출문제 - 질문 */
 .q-text {
     font-weight: bold;
     color: #2E4053;
@@ -137,15 +119,11 @@ st.markdown("""
     font-size: 15px;
     display: block; 
 }
-
-/* 기출문제 - 정답(보기) */
 .a-text {
     color: #444;
     font-size: 14px;
-    line-height: 1.5; 
+    line-height: 1.4; 
 }
-
-/* 앱 로고 */
 .app-logo {
     font-size: 12px;            
     font-weight: 300;            
@@ -153,19 +131,24 @@ st.markdown("""
     text-align: right;
     margin-bottom: 0.5rem;
 }
-
 .concept-category {
     font-size: 14px;        
     font-weight: 400;            
     color: #7F8C8D;             
     margin-bottom: 4px;        
 }
-
 .stButton button {
     width: 100%;
     padding: 0.25rem 0.5rem;
 }
 hr { margin: 1.5rem 0; }
+
+/* 이미지 스타일 커스텀 */
+.concept-img {
+    margin-top: 10px;
+    border-radius: 8px;
+    max-width: 100%;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -268,7 +251,7 @@ if only_high_freq and freq_col in filtered_df.columns:
     filtered_df = filtered_df[filtered_df["빈출_num"] >= 3]
 
 # --------------------------------------------------
-# 7. 메인 화면 출력
+# 7. 메인 화면 출력 및 렌더링 함수
 # --------------------------------------------------
 if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
@@ -286,6 +269,7 @@ else:
         freq_val = str(row.get('개념빈출', '')).strip()
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val else ""
 
+        # 헤더 출력
         st.markdown(f"""
         <div class='title-row'>
             <div class='concept-title-text'>{num_val}) {row.get('구분','')}</div>
@@ -293,10 +277,16 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
+        # 1 & 2. 개념 텍스트 (마크다운 유지 + 줄바꿈 밀착 처리)
         concept_txt = str(row.get('개념', ''))
-        # 마크다운 유지를 위해 2칸 공백 + 줄바꿈 사용
+        # 줄바꿈 앞에 공백 2개를 넣어 마크다운 줄바꿈을 적용하되, 문단이 나뉘어 벌어지지 않게 함
         concept_txt = concept_txt.replace('\n', '  \n') 
         st.markdown(concept_txt)
+
+        # 3. 개념 이미지 URL 추가
+        img_url = get_direct_url(row.get('이미지url', ''))
+        if img_url:
+            st.image(img_url, use_container_width=False, width=500)
 
     def render_questions(valid_qs):
         st.markdown("<div class='section-gap'></div>", unsafe_allow_html=True)
@@ -308,16 +298,24 @@ else:
                         year_info = str(q.get('문제빈도 출제년도', '')).strip()
                     
                     year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
+                    
+                    # 정답 텍스트 줄바꿈 밀착 처리
                     answer_txt = str(q.get('정답', '')).replace('\n', '<br>')
+                    
+                    # 3. 문제 이미지 URL 추가
+                    q_img_url = get_direct_url(q.get('문제url', ''))
+                    q_img_html = f"<img src='{q_img_url}' class='concept-img' width='400'><br>" if q_img_url else ""
 
                     st.markdown(f"""
                     <div class='question-box'>
                         {year_html}
                         <div class='q-text'>Q. {q.get('문제','')}</div>
                         <div class='a-text'>{answer_txt}</div>
+                        {q_img_html}
                     </div>
                     """, unsafe_allow_html=True)
 
+    # 뷰 모드 로직 (암기카드/전체)
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
         if st.session_state.card_idx >= len(pk_list): st.session_state.card_idx = 0
