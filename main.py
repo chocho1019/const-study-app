@@ -63,7 +63,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (기본 스타일 및 정렬 유지)
+# 2. 스타일 (기존 스타일 유지)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -174,13 +174,16 @@ th, td {
 # --------------------------------------------------
 def format_smart_text(text):
     if not text: return ""
+    # 표 형태 감지
     if "|" in text and "---" in text:
         return text.replace('\n', '  \n')
+    
     lines = text.split('\n')
     html_output = ""
     for line in lines:
         if line.strip():
-            html_output += f<div class='text-line'>{line.strip()}</div>
+            # (수정됨) 문법 오류 해결: f-string 따옴표 추가
+            html_output += f"<div class='text-line'>{line.strip()}</div>"
     return html_output
 
 @st.cache_data(ttl=600)
@@ -193,11 +196,9 @@ def load_data():
         
         headers = all_values[0]
         data = all_values[1:]
-        
-        # 특정 열(I, N)에 대한 강제 매핑 (인덱스는 0부터 시작하므로 I=8, N=13)
         df = pd.DataFrame(data, columns=headers)
         
-        # 구글 시트의 실제 I열과 N열 데이터를 명시적으로 추출하여 컬럼 생성
+        # I열(8), N열(13) 이미지 데이터 강제 매핑
         if len(headers) >= 9: df['개념이미지_I'] = df.iloc[:, 8]
         if len(headers) >= 14: df['문제이미지_N'] = df.iloc[:, 13]
 
@@ -233,7 +234,6 @@ if not user_email:
     if ALLOWED_EMAILS is None:
         st.error("⚠️ 구글 시트 연결 오류"); st.stop()
         
-    # 로그인 전 안내 문구
     st.info("👈 왼쪽 사이드바에서 이메일로 로그인하면 학습을 시작할 수 있습니다.")
     
     st.sidebar.title("🔐 사용자 인증")
@@ -297,18 +297,14 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # 1. 개념 텍스트
+        # 개념 텍스트
         concept_raw = str(row.get('개념', ''))
-        if "|" in concept_raw and "---" in concept_raw:
-            st.markdown(concept_raw.replace('\n', '  \n'), unsafe_allow_html=True)
-        else:
-            st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
+        st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
 
-        # 2. 개념 이미지 (I열) - 개념 하단 배치
+        # 개념 이미지 (I열)
         concept_img_url = get_direct_url(row.get('개념이미지_I', ''))
-        if not concept_img_url: # 기존 컬럼명 대비 백업
+        if not concept_img_url:
              concept_img_url = get_direct_url(row.get('이미지url', ''))
-        
         if concept_img_url:
             st.image(concept_img_url, use_container_width=False, width=500)
 
@@ -323,14 +319,13 @@ else:
                     q_text = str(q.get('문제',''))
                     a_text = str(q.get('정답',''))
                     
-                    # 문제 이미지 (N열) 추출
+                    # 문제 이미지 (N열)
                     q_img_url = get_direct_url(q.get('문제이미지_N', ''))
-                    if not q_img_url: # 기존 컬럼명 대비 백업
+                    if not q_img_url:
                         q_img_url = get_direct_url(q.get('문제url', ''))
                     
                     q_img_html = f"<img src='{q_img_url}' class='concept-img' width='400'>" if q_img_url else ""
 
-                    # 렌더링 순서: 문제텍스트 -> 문제이미지 -> 정답텍스트
                     st.markdown(f"""
                     <div class='question-box'>
                         {year_html}
