@@ -63,7 +63,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (기존 스타일 유지)
+# 2. 스타일 (기존 스타일 유지 및 테이블 서식 적용)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -174,15 +174,12 @@ th, td {
 # --------------------------------------------------
 def format_smart_text(text):
     if not text: return ""
-    # 표 형태 감지
     if "|" in text and "---" in text:
         return text.replace('\n', '  \n')
-    
     lines = text.split('\n')
     html_output = ""
     for line in lines:
         if line.strip():
-            # (수정됨) 문법 오류 해결: f-string 따옴표 추가
             html_output += f"<div class='text-line'>{line.strip()}</div>"
     return html_output
 
@@ -198,8 +195,11 @@ def load_data():
         data = all_values[1:]
         df = pd.DataFrame(data, columns=headers)
         
-        # I열(8), N열(13) 이미지 데이터 강제 매핑
+        # 열 매핑 (I:8, J:9, L:11, N:13)
         if len(headers) >= 9: df['개념이미지_I'] = df.iloc[:, 8]
+        if len(headers) >= 10: 
+            df['개념빈출_J'] = pd.to_numeric(df.iloc[:, 9].str.replace(r'[^0-9]', '', regex=True), errors='coerce').fillna(0).astype(int)
+        if len(headers) >= 12: df['숫문_L'] = df.iloc[:, 11]
         if len(headers) >= 14: df['문제이미지_N'] = df.iloc[:, 13]
 
         df = df.loc[:, ~df.columns.duplicated()]
@@ -262,11 +262,19 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
 # 6. 필터 및 모드 설정
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
-sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
-only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
+sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순 (J열 기준)")
+only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만 (J열 기준)")
 view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"])
 
 filtered_df = df.copy()
+
+# 필터 적용
+if only_high_freq:
+    filtered_df = filtered_df[filtered_df['개념빈출_J'] >= 3]
+
+if sort_by_freq:
+    filtered_df = filtered_df.sort_values(by='개념빈출_J', ascending=False)
+
 for col, label in [("과목", "과목"), ("대카테고리", "대카테고리"), ("소카테고리", "소카테고리")]:
     if col in filtered_df.columns:
         options = ["전체"] + list(filtered_df[col][filtered_df[col] != ""].unique())
@@ -287,8 +295,8 @@ else:
 
     def render_concept_block(row, pk_val):
         num_val = str(row.get('숫구', '')).strip().replace(".0", "") or pk_val
-        freq_val = str(row.get('개념빈출', '')).strip()
-        badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val else ""
+        freq_val = str(row.get('개념빈출_J', '')).strip()
+        badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
 
         st.markdown(f"""
         <div class='title-row'>
@@ -297,14 +305,10 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # 개념 텍스트
         concept_raw = str(row.get('개념', ''))
         st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
 
-        # 개념 이미지 (I열)
         concept_img_url = get_direct_url(row.get('개념이미지_I', ''))
-        if not concept_img_url:
-             concept_img_url = get_direct_url(row.get('이미지url', ''))
         if concept_img_url:
             st.image(concept_img_url, use_container_width=False, width=500)
 
@@ -316,20 +320,19 @@ else:
                     year_info = str(q.get('출제년도', '')).strip() or str(q.get('문제빈도 출제년도', '')).strip()
                     year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
                     
+                    q_num = str(q.get('숫문_L', '')).strip().replace(".0", "")
+                    q_num_display = f"{q_num}. " if q_num else "Q. "
+                    
                     q_text = str(q.get('문제',''))
                     a_text = str(q.get('정답',''))
                     
-                    # 문제 이미지 (N열)
                     q_img_url = get_direct_url(q.get('문제이미지_N', ''))
-                    if not q_img_url:
-                        q_img_url = get_direct_url(q.get('문제url', ''))
-                    
                     q_img_html = f"<img src='{q_img_url}' class='concept-img' width='400'>" if q_img_url else ""
 
                     st.markdown(f"""
                     <div class='question-box'>
                         {year_html}
-                        <div class='q-text'>Q. {q_text}</div>
+                        <div class='q-text'>{q_num_display}{q_text}</div>
                         <div style='text-align:center;'>{q_img_html}</div>
                         <div class='a-text' style='margin-top:10px;'>{format_smart_text(a_text)}</div>
                     </div>
@@ -338,19 +341,31 @@ else:
     # 뷰 모드 실행
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
+        # 인덱스 범위 초과 방지
+        if st.session_state.card_idx >= len(pk_list): st.session_state.card_idx = 0
+        
         pk = pk_list[st.session_state.card_idx]
         group = grouped.get_group(pk)
         row = group.iloc[0]
         st.markdown(f"<div class='concept-category'>{row.get('과목','')} / {row.get('대카테고리','')}</div>", unsafe_allow_html=True)
+        
         with st.container(border=True):
             render_concept_block(row, pk)
+        
         render_questions(group[group['문제'].str.strip() != ""])
-        c1, c2, c3 = st.columns([1,2,1])
-        if c1.button(" 이전 "): 
-            st.session_state.card_idx = max(0, st.session_state.card_idx-1); st.rerun()
-        c2.markdown(f"<p style='text-align:center; margin-top: 5px;'>{st.session_state.card_idx+1} / {len(pk_list)}</p>", unsafe_allow_html=True)
-        if c3.button(" 다음 "): 
-            st.session_state.card_idx = min(len(pk_list)-1, st.session_state.card_idx+1); st.rerun()
+        
+        # 버튼 배치 수정 (다음 버튼을 무조건 오른쪽 끝으로)
+        btn_cols = st.columns([1, 1, 1])
+        with btn_cols[0]:
+            if st.button("이전"):
+                st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
+                st.rerun()
+        with btn_cols[1]:
+            st.markdown(f"<p style='text-align:center; margin-top: 8px;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
+        with btn_cols[2]:
+            if st.button("다음"):
+                st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
+                st.rerun()
     else:
         for pk, group in grouped:
             row = group.iloc[0]
