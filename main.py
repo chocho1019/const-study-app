@@ -157,9 +157,26 @@ def load_data():
         # '테스트용' 시트를 가져옵니다.
         sheet = doc.worksheet("테스트용")
         
-        # get_all_records()는 첫 줄을 헤더로 인식하여 딕셔너리 리스트를 반환합니다.
-        records = sheet.get_all_records()
-        df = pd.DataFrame(records)
+        # [수정] get_all_records() 대신 get_all_values() 사용
+        # get_all_records는 헤더 중복 시 오류가 발생하지만, 
+        # get_all_values는 단순히 리스트의 리스트로 가져오므로 오류가 발생하지 않습니다.
+        all_values = sheet.get_all_values()
+        
+        # 데이터가 없는 경우 처리
+        if not all_values:
+            return pd.DataFrame()
+
+        # 첫 번째 행을 헤더(columns), 나머지를 데이터로 설정
+        headers = all_values[0]
+        data = all_values[1:]
+        
+        # DataFrame 생성
+        df = pd.DataFrame(data, columns=headers)
+        
+        # [중요] 중복된 컬럼 제거 (뒤쪽에 있는 불필요한 중복 데이터 무시)
+        # Pandas는 중복 컬럼을 허용하지만, 추후 데이터 처리 시 혼동을 막기 위해
+        # 중복된 이름의 컬럼 중 첫 번째만 남기고 나머지는 제거합니다.
+        df = df.loc[:, ~df.columns.duplicated()]
         
         # 컬럼 공백 제거
         df.columns = df.columns.str.strip()
