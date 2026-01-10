@@ -81,7 +81,7 @@ st.markdown("""
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
-    border-bottom: 2px solid #eaeaea; /* 구분선 느낌 추가 (선택사항) */
+    border-bottom: 2px solid #eaeaea; 
     padding-bottom: 8px;
 }
 
@@ -92,23 +92,23 @@ st.markdown("""
     color: #2E4053;
 }
 
-/* 빈출 배지 스타일 (요청사항 5번) */
+/* 빈출 배지 스타일 (요청사항 1: '회' 추가는 파이썬 로직에서 처리) */
 .freq-badge {
-    border: 1px solid #bbb;     /* 회색 테두리 */
-    color: #777;                /* 연한 회색 글씨 */
+    border: 1px solid #bbb;     
+    color: #777;                
     border-radius: 4px;
     padding: 2px 8px;
     font-size: 13px;
     font-weight: 500;
-    white-space: nowrap;        /* 줄바꿈 방지 */
+    white-space: nowrap;        
 }
 
-/* 내용 본문 스타일 (줄간격 자연스럽게) */
+/* 내용 본문 스타일 (요청사항 2: 줄간격 자연스럽게 붙이기) */
 .concept-content-text {
     font-size: 16px;
     color: #333;
-    line-height: 1.6;           /* 자연스러운 줄간격 */
-    white-space: pre-wrap;      /* 텍스트 내 줄바꿈 반영 */
+    line-height: 1.5;           /* 줄간격을 1.5로 설정하여 촘촘하게 */
+    /* white-space: pre-wrap; 을 제거하여 불필요한 이중 줄바꿈 방지 */
 }
 
 /* 기출문제 박스 스타일 */
@@ -120,19 +120,27 @@ st.markdown("""
     border: 1px solid #e0e0e0;
 }
 
-/* 기출문제 질문 */
+/* 기출문제 - 출제년도 */
+.q-year {
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 4px; /* 년도와 문제 사이 간격 좁게 */
+}
+
+/* 기출문제 - 질문 (요청사항 3: 년도 아래로 내림) */
 .q-text {
     font-weight: bold;
     color: #2E4053;
     margin-bottom: 8px;
     font-size: 15px;
+    display: block; /* 블록 요소로 만들어 줄바꿈 확정 */
 }
 
-/* 기출문제 정답(보기) - 간격 좁게 */
+/* 기출문제 - 정답(보기) (요청사항 2: 자연스럽게 붙이기) */
 .a-text {
     color: #444;
     font-size: 14px;
-    line-height: 1.5;           /* 줄간격 좁게 설정 */
+    line-height: 1.5; 
 }
 
 /* 앱 로고 */
@@ -272,18 +280,19 @@ else:
     # 헬퍼 함수: 타이틀/내용 생성
     # --------------------------
     def render_concept_block(row, pk_val):
-        # 1. 타이틀 번호 처리: '숫구'가 있으면 사용, 없으면 PK 사용 (소수점 제거)
+        # 1. 타이틀 번호 처리
         num_val = str(row.get('숫구', '')).strip()
         if not num_val:
             num_val = pk_val
         else:
             num_val = num_val.replace(".0", "")
         
-        # 2. 빈출 데이터 가져오기 (배지용)
+        # 2. 빈출 데이터 가져오기 + '회' 추가 (요청사항 1)
         freq_val = str(row.get('개념빈출', '')).strip()
-        badge_html = f"<div class='freq-badge'>{freq_val}</div>" if freq_val else ""
+        # 데이터가 있으면 뒤에 '회'를 붙임
+        badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val else ""
 
-        # 타이틀 HTML (Flexbox 적용: 좌측 텍스트, 우측 배지)
+        # 타이틀 HTML
         st.markdown(f"""
         <div class='title-row'>
             <div class='concept-title-text'>{num_val}) {row.get('구분','')}</div>
@@ -291,8 +300,8 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # 3. 개념 본문 (줄바꿈 <br> 처리로 자연스럽게)
-        # 엑셀의 줄바꿈(\n)을 HTML <br>로 치환하여 line-height 스타일을 따르게 함
+        # 3. 개념 본문 (요청사항 2: 자연스럽게 붙이기)
+        # Alt+Enter(\n)를 <br>로 바꾸어 HTML로 렌더링. CSS에서 pre-wrap을 뺐으므로 <br> 간격만 적용됨.
         concept_txt = str(row.get('개념', '')).replace('\n', '<br>')
         st.markdown(f"<div class='concept-content-text'>{concept_txt}</div>", unsafe_allow_html=True)
 
@@ -307,17 +316,19 @@ else:
                     # 출제년도 처리
                     year_info = str(q.get('출제년도', '')).strip()
                     if not year_info:
-                        # 혹시 컬럼명이 다를 경우를 대비한 기존 로직 유지
                         year_info = str(q.get('문제빈도 출제년도', '')).strip()
                     
-                    year_badge = f"<span style='color: #888; font-size: 0.8em; margin-right:5px;'>[{year_info}]</span>" if year_info else ""
+                    # 요청사항 3: 출제년도를 별도 div(q-year)로 분리하여 윗줄에 표시
+                    year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
 
-                    # 보기(정답) 텍스트 줄바꿈 처리 (간격 좁게하기 위해 <br> 사용)
+                    # 요청사항 2: 정답(보기)도 자연스럽게 붙이기 (\n -> <br>)
                     answer_txt = str(q.get('정답', '')).replace('\n', '<br>')
 
+                    # 요청사항 3: year_html 다음에 q-text(질문)가 새로운 줄(block)로 옴
                     st.markdown(f"""
                     <div class='question-box'>
-                        <div class='q-text'>{year_badge}Q. {q.get('문제','')}</div>
+                        {year_html}
+                        <div class='q-text'>Q. {q.get('문제','')}</div>
                         <div class='a-text'>{answer_txt}</div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -338,7 +349,6 @@ else:
         st.markdown(f"<div class='concept-category'>{row.get('과목','')} / {row.get('대카테고리','')}</div>", unsafe_allow_html=True)
         
         with st.container(border=True):
-            # 타이틀 및 개념 출력
             render_concept_block(row, pk)
         
         # 기출문제 표시
@@ -358,7 +368,6 @@ else:
         for pk, group in grouped:
             row = group.iloc[0]
             
-            # 개념 단위 컨테이너
             with st.container():
                 render_concept_block(row, pk)
                 
