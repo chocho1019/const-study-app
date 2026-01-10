@@ -63,7 +63,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (기존 스타일 유지 및 테이블 서식 적용)
+# 2. 스타일 (기존 스타일 유지)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -262,13 +262,14 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
 # 6. 필터 및 모드 설정
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
-sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순 (J열 기준)")
-only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만 (J열 기준)")
+# (수정됨) 라벨에서 (J열 기준) 텍스트 제거
+sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
+only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
 view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"])
 
 filtered_df = df.copy()
 
-# 필터 적용
+# 필터 적용 로직
 if only_high_freq:
     filtered_df = filtered_df[filtered_df['개념빈출_J'] >= 3]
 
@@ -320,8 +321,13 @@ else:
                     year_info = str(q.get('출제년도', '')).strip() or str(q.get('문제빈도 출제년도', '')).strip()
                     year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
                     
+                    # (수정됨) 마침표 중복 방지 로직
                     q_num = str(q.get('숫문_L', '')).strip().replace(".0", "")
-                    q_num_display = f"{q_num}. " if q_num else "Q. "
+                    if q_num:
+                        # 시트 데이터에 이미 점이 있다면 그대로 쓰고, 없으면 하나만 붙여줌
+                        q_num_display = f"{q_num} " if "." in q_num else f"{q_num}. "
+                    else:
+                        q_num_display = "Q. "
                     
                     q_text = str(q.get('문제',''))
                     a_text = str(q.get('정답',''))
@@ -341,7 +347,6 @@ else:
     # 뷰 모드 실행
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
-        # 인덱스 범위 초과 방지
         if st.session_state.card_idx >= len(pk_list): st.session_state.card_idx = 0
         
         pk = pk_list[st.session_state.card_idx]
@@ -354,7 +359,7 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-        # 버튼 배치 수정 (다음 버튼을 무조건 오른쪽 끝으로)
+        # 버튼 배치 (다음 버튼 오른쪽 고정)
         btn_cols = st.columns([1, 1, 1])
         with btn_cols[0]:
             if st.button("이전"):
