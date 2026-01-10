@@ -63,7 +63,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (기존 스타일 유지 및 정렬 스타일 추가)
+# 2. 스타일 (기본 스타일 및 정렬 유지)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -144,18 +144,17 @@ st.markdown("""
 hr { margin: 1.5rem 0; }
 
 .concept-img {
-    margin-top: 10px;
+    margin: 10px 0;
     border-radius: 8px;
     max-width: 100%;
 }
 
-/* --- 추가된 텍스트 정렬 스타일 --- */
 .text-line {
-    margin-bottom: 4px;      /* 줄 사이 간격 최소화 */
-    padding-left: 22px;      /* 왼쪽 여백 확보 */
-    text-indent: -22px;     /* 첫 줄만 왼쪽으로 밀어서 숫자 강조 */
+    margin-bottom: 4px;
+    padding-left: 22px;
+    text-indent: -22px;
     line-height: 1.6;
-    word-break: keep-all;    /* 단어 단위 끊김 방지 */
+    word-break: keep-all;
 }
 
 table {
@@ -174,25 +173,14 @@ th, td {
 # 3. 데이터 로드 및 Helper 함수
 # --------------------------------------------------
 def format_smart_text(text):
-    """
-    텍스트를 분석하여 표는 그대로 유지하고, 
-    일반 텍스트 줄바꿈은 내어쓰기가 적용된 HTML로 변환합니다.
-    """
     if not text: return ""
-    
-    # 1. 만약 표(Table)가 포함되어 있다면 마크다운 렌더링을 위해 그대로 반환하되 <br>만 처리
     if "|" in text and "---" in text:
         return text.replace('\n', '  \n')
-
-    # 2. 일반 텍스트 처리: 알트+엔터(\n) 기준으로 분리
     lines = text.split('\n')
     html_output = ""
     for line in lines:
         if line.strip():
-            # 숫자로 시작하는 리스트 형태인지 확인 (예: ①, 1., (1) 등)
-            # 여기서는 특수문자 숫자를 포함한 내어쓰기 적용
-            html_output += f"<div class='text-line'>{line.strip()}</div>"
-    
+            html_output += f<div class='text-line'>{line.strip()}</div>
     return html_output
 
 @st.cache_data(ttl=600)
@@ -202,11 +190,20 @@ def load_data():
         sheet = doc.worksheet("테스트용")
         all_values = sheet.get_all_values()
         if not all_values: return pd.DataFrame()
+        
         headers = all_values[0]
         data = all_values[1:]
+        
+        # 특정 열(I, N)에 대한 강제 매핑 (인덱스는 0부터 시작하므로 I=8, N=13)
         df = pd.DataFrame(data, columns=headers)
+        
+        # 구글 시트의 실제 I열과 N열 데이터를 명시적으로 추출하여 컬럼 생성
+        if len(headers) >= 9: df['개념이미지_I'] = df.iloc[:, 8]
+        if len(headers) >= 14: df['문제이미지_N'] = df.iloc[:, 13]
+
         df = df.loc[:, ~df.columns.duplicated()]
         df.columns = df.columns.str.strip()
+        
         if "fpk" in df.columns and "PK" in df.columns:
             df["PK"] = df.apply(
                 lambda row: row["fpk"].strip() if (str(row["PK"]).strip() == "" or pd.isna(row["PK"])) and str(row.get("fpk", "")).strip() != "" 
@@ -230,17 +227,25 @@ def get_allowed_emails():
     except: return None
     
 user_email = st.session_state.get('user_id', "").strip()
+
 if not user_email:
     ALLOWED_EMAILS = get_allowed_emails()
     if ALLOWED_EMAILS is None:
         st.error("⚠️ 구글 시트 연결 오류"); st.stop()
+        
+    # 로그인 전 안내 문구
+    st.info("👈 왼쪽 사이드바에서 이메일로 로그인하면 학습을 시작할 수 있습니다.")
+    
     st.sidebar.title("🔐 사용자 인증")
     input_email = st.sidebar.text_input("등록된 이메일을 입력하세요").strip()
     if st.sidebar.button("로그인"):
         if input_email in ALLOWED_EMAILS:
             st.session_state.user_id = input_email
             st.rerun()
+        else:
+            st.sidebar.error("등록되지 않은 이메일입니다.")
     st.stop()
+
 USER_ID = st.session_state.user_id
 
 # --------------------------------------------------
@@ -292,18 +297,20 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # --- 개념 텍스트 렌더링 (커스텀 포맷 적용) ---
+        # 1. 개념 텍스트
         concept_raw = str(row.get('개념', ''))
         if "|" in concept_raw and "---" in concept_raw:
-            # 표 형태일 경우 기존 방식 유지
             st.markdown(concept_raw.replace('\n', '  \n'), unsafe_allow_html=True)
         else:
-            # 일반 텍스트일 경우 내어쓰기 및 밀착 처리
-            formatted_html = format_smart_text(concept_raw)
-            st.markdown(formatted_html, unsafe_allow_html=True)
+            st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
 
-        img_url = get_direct_url(row.get('이미지url', ''))
-        if img_url: st.image(img_url, use_container_width=False, width=500)
+        # 2. 개념 이미지 (I열) - 개념 하단 배치
+        concept_img_url = get_direct_url(row.get('개념이미지_I', ''))
+        if not concept_img_url: # 기존 컬럼명 대비 백업
+             concept_img_url = get_direct_url(row.get('이미지url', ''))
+        
+        if concept_img_url:
+            st.image(concept_img_url, use_container_width=False, width=500)
 
     def render_questions(valid_qs):
         st.markdown("<div class='section-gap'></div>", unsafe_allow_html=True)
@@ -313,19 +320,23 @@ else:
                     year_info = str(q.get('출제년도', '')).strip() or str(q.get('문제빈도 출제년도', '')).strip()
                     year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
                     
-                    # --- 문제 및 정답 텍스트 렌더링 (커스텀 포맷 적용) ---
                     q_text = str(q.get('문제',''))
                     a_text = str(q.get('정답',''))
                     
-                    q_img_url = get_direct_url(q.get('문제url', ''))
-                    q_img_html = f"<img src='{q_img_url}' class='concept-img' width='400'><br>" if q_img_url else ""
+                    # 문제 이미지 (N열) 추출
+                    q_img_url = get_direct_url(q.get('문제이미지_N', ''))
+                    if not q_img_url: # 기존 컬럼명 대비 백업
+                        q_img_url = get_direct_url(q.get('문제url', ''))
+                    
+                    q_img_html = f"<img src='{q_img_url}' class='concept-img' width='400'>" if q_img_url else ""
 
+                    # 렌더링 순서: 문제텍스트 -> 문제이미지 -> 정답텍스트
                     st.markdown(f"""
                     <div class='question-box'>
                         {year_html}
                         <div class='q-text'>Q. {q_text}</div>
-                        <div class='a-text'>{format_smart_text(a_text)}</div>
-                        {q_img_html}
+                        <div style='text-align:center;'>{q_img_html}</div>
+                        <div class='a-text' style='margin-top:10px;'>{format_smart_text(a_text)}</div>
                     </div>
                     """, unsafe_allow_html=True)
 
