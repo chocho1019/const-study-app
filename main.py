@@ -149,6 +149,15 @@ hr { margin: 1.5rem 0; }
     border-radius: 8px;
     max-width: 100%;
 }
+/* 표 내부의 줄바꿈 밀착 및 스타일 유지 */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 8px;
+    border: 1px solid #ddd;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -277,11 +286,10 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # 1 & 2. 개념 텍스트 (마크다운 유지 + 줄바꿈 밀착 처리)
+        # 1 & 2. 개념 텍스트 (마크다운 유지 + <br> 허용)
         concept_txt = str(row.get('개념', ''))
-        # 줄바꿈 앞에 공백 2개를 넣어 마크다운 줄바꿈을 적용하되, 문단이 나뉘어 벌어지지 않게 함
-        concept_txt = concept_txt.replace('\n', '  \n') 
-        st.markdown(concept_txt)
+        # 줄바꿈 처리를 하되, 마크다운 표 안의 <br> 태그가 작동하도록 unsafe_allow_html 사용
+        st.markdown(concept_txt.replace('\n', '  \n'), unsafe_allow_html=True)
 
         # 3. 개념 이미지 URL 추가
         img_url = get_direct_url(row.get('이미지url', ''))
