@@ -92,7 +92,7 @@ st.markdown("""
     color: #2E4053;
 }
 
-/* 빈출 배지 스타일 (요청사항 1: '회' 추가는 파이썬 로직에서 처리) */
+/* 빈출 배지 스타일 */
 .freq-badge {
     border: 1px solid #bbb;     
     color: #777;                
@@ -103,12 +103,16 @@ st.markdown("""
     white-space: nowrap;        
 }
 
-/* 내용 본문 스타일 (요청사항 2: 줄간격 자연스럽게 붙이기) */
-.concept-content-text {
-    font-size: 16px;
+/* 개념 본문 스타일 - 마크다운 렌더링을 위해 일부 스타일은 st.markdown 기본값 사용 */
+/* 대신 가독성을 위해 기본 p 태그 스타일을 미세 조정할 수 있습니다 */
+.element-container {
     color: #333;
-    line-height: 1.5;           /* 줄간격을 1.5로 설정하여 촘촘하게 */
-    /* white-space: pre-wrap; 을 제거하여 불필요한 이중 줄바꿈 방지 */
+}
+
+/* 개념과 기출문제 사이의 간격 (요청사항 1 해결) */
+.section-gap {
+    height: 30px;
+    width: 100%;
 }
 
 /* 기출문제 박스 스타일 */
@@ -124,19 +128,19 @@ st.markdown("""
 .q-year {
     color: #888;
     font-size: 12px;
-    margin-bottom: 4px; /* 년도와 문제 사이 간격 좁게 */
+    margin-bottom: 4px; 
 }
 
-/* 기출문제 - 질문 (요청사항 3: 년도 아래로 내림) */
+/* 기출문제 - 질문 */
 .q-text {
     font-weight: bold;
     color: #2E4053;
     margin-bottom: 8px;
     font-size: 15px;
-    display: block; /* 블록 요소로 만들어 줄바꿈 확정 */
+    display: block; 
 }
 
-/* 기출문제 - 정답(보기) (요청사항 2: 자연스럽게 붙이기) */
+/* 기출문제 - 정답(보기) */
 .a-text {
     color: #444;
     font-size: 14px;
@@ -221,8 +225,7 @@ if not user_email:
         st.stop()
         
     st.sidebar.title("🔐 사용자 인증")
-    input_email = st.sidebar.text_input("등록된 이메일을 입력하세요").strip()
-    if st.sidebar.button("로그인"):
+    input_email = st.sidebar.text_input("등록된 이메일을 입력하세요").strip()<br>    if st.sidebar.button("로그인"):
         if input_email in ALLOWED_EMAILS:
             st.session_state.user_id = input_email
             st.rerun()
@@ -287,12 +290,11 @@ else:
         else:
             num_val = num_val.replace(".0", "")
         
-        # 2. 빈출 데이터 가져오기 + '회' 추가 (요청사항 1)
+        # 2. 빈출 데이터 가져오기 + '회' 추가
         freq_val = str(row.get('개념빈출', '')).strip()
-        # 데이터가 있으면 뒤에 '회'를 붙임
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val else ""
 
-        # 타이틀 HTML
+        # 타이틀 HTML (변경 없음)
         st.markdown(f"""
         <div class='title-row'>
             <div class='concept-title-text'>{num_val}) {row.get('구분','')}</div>
@@ -300,16 +302,23 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # 3. 개념 본문 (요청사항 2: 자연스럽게 붙이기)
-        # Alt+Enter(\n)를 <br>로 바꾸어 HTML로 렌더링. CSS에서 pre-wrap을 뺐으므로 <br> 간격만 적용됨.
-        concept_txt = str(row.get('개념', '')).replace('\n', '<br>')
-        st.markdown(f"<div class='concept-content-text'>{concept_txt}</div>", unsafe_allow_html=True)
+        # 3. 개념 본문 (요청사항 2 & 3 해결)
+        # HTML div로 감싸지 않고, st.markdown을 직접 사용하여 표/볼드체 등이 나오게 함
+        # 줄바꿈 처리: \n을 "  \n" (공백2개+엔터)로 바꾸면 마크다운에서 '줄바꿈'으로 인식되며
+        # 문단 나눔(\n\n)이 아니므로 간격이 넓어지지 않고 자연스럽게 붙음.
+        concept_txt = str(row.get('개념', ''))
+        concept_txt = concept_txt.replace('\n', '  \n') 
+        
+        st.markdown(concept_txt)
 
 
     # --------------------------
     # 헬퍼 함수: 기출문제 생성
     # --------------------------
     def render_questions(valid_qs):
+        # 요청사항 1 해결: 개념과 문제 사이에 간격을 주는 투명 div 삽입
+        st.markdown("<div class='section-gap'></div>", unsafe_allow_html=True)
+        
         if not valid_qs.empty:
             with st.expander(f"📝 관련 기출문제 ({len(valid_qs)}건)"):
                 for _, q in valid_qs.iterrows():
@@ -318,13 +327,11 @@ else:
                     if not year_info:
                         year_info = str(q.get('문제빈도 출제년도', '')).strip()
                     
-                    # 요청사항 3: 출제년도를 별도 div(q-year)로 분리하여 윗줄에 표시
                     year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
 
-                    # 요청사항 2: 정답(보기)도 자연스럽게 붙이기 (\n -> <br>)
+                    # 정답(보기) 줄바꿈 처리
                     answer_txt = str(q.get('정답', '')).replace('\n', '<br>')
 
-                    # 요청사항 3: year_html 다음에 q-text(질문)가 새로운 줄(block)로 옴
                     st.markdown(f"""
                     <div class='question-box'>
                         {year_html}
