@@ -723,7 +723,9 @@ else:
                     </div>
                     """, unsafe_allow_html=True)
 
-    # 뷰 모드 실행
+    # --------------------------------------------------
+    # 뷰 모드 실행 (수정된 버튼 배치 부분)
+    # --------------------------------------------------
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
         if st.session_state.card_idx >= len(pk_list): st.session_state.card_idx = 0
@@ -738,16 +740,20 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-        # --- 세로 풀 사이즈 버튼 (key 추가로 에러 방지) ---
-        if st.button("이전", key="btn_prev"):
+        # --- 버튼 배치 수정 시작 ---
+        # 1. 이전 버튼 (한 줄 전체 차지)
+        if st.button("이전"):
             st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
             st.rerun()
-            
-        st.markdown(f"<p style='text-align:center; margin: 15px 0; font-weight: 500; color: #7F8C8D;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
-        
-        if st.button("다음", key="btn_next"):
+
+        # 2. 현재 페이지 표시 (가운데 정렬)
+        st.markdown(f"<p style='text-align:center; margin: 10px 0;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
+
+        # 3. 다음 버튼 (한 줄 전체 차지)
+        if st.button("다음"):
             st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
             st.rerun()
+        # --- 버튼 배치 수정 끝 ---
         
        
     else:
