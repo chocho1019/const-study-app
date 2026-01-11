@@ -63,7 +63,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (정사각형 회색 버튼 적용)
+# 2. 스타일 (정사각형 회색 버튼 75% 축소 적용)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -137,7 +137,7 @@ st.markdown("""
     margin-bottom: 4px;        
 }
 
-/* --- [수정됨] 하트 버튼 스타일: 정사각형 회색 박스 --- */
+/* --- [수정됨] 하트 버튼 스타일: 정사각형 회색 박스 (크기 75% 축소) --- */
 .stButton button {
     width: 100%;
     padding: 0.6rem 0.5rem;
@@ -152,11 +152,14 @@ div[data-testid="stHorizontalBlock"] .stButton button {
     background-color: #f0f2f6 !important;
     border: none !important;
     border-radius: 8px !important;
-    font-size: 20px !important;
-    /* [핵심] 너비와 높이를 동일하게 강제하여 정사각형 생성 */
-    width: 42px !important;
-    min-width: 42px !important;
-    height: 42px !important;
+    /* [수정] 폰트 크기 20px -> 16px로 축소 */
+    font-size: 16px !important;
+    
+    /* [수정] 너비와 높이를 42px -> 32px로 축소 (약 75%) */
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    
     padding: 0 !important;
     margin: 0 auto !important; /* 중앙 정렬 */
     display: flex;
@@ -289,7 +292,7 @@ def load_data():
                 else str(row["PK"]).strip(), axis=1
             )
 
-        # [속도 개선 1] 텍스트 처리를 로드 시점에 미리 수행하여 렌더링 부하 감소
+        # [속도 개선] 텍스트 처리를 로드 시점에 미리 수행
         df['HTML_개념'] = df['개념'].fillna("").apply(format_smart_text_logic)
         df['HTML_정답'] = df['정답'].fillna("").apply(format_smart_text_logic)
 
@@ -423,7 +426,9 @@ else:
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
         clean_gubun = row.get('구분','').replace('\n', ' ')
 
+        # --- [변경] 타이틀 좌측 하트 버튼 ---
         col_fav, col_tit = st.columns([0.06, 0.94])
+        
         with col_fav:
             is_fav = pk_val in st.session_state.favorites
             heart_icon = "💛" if is_fav else "🤍"
@@ -472,7 +477,7 @@ else:
                     """, unsafe_allow_html=True)
 
     # --------------------------------------------------
-    # 뷰 모드 실행 (속도 개선 2: 리스트 모드 페이지네이션)
+    # 뷰 모드 실행 (속도 개선: 리스트 모드 페이지네이션)
     # --------------------------------------------------
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
@@ -503,7 +508,6 @@ else:
         items_per_page = 20
         total_items = len(pk_list)
         
-        # 페이지 수가 1보다 클 때만 페이지네이션 컨트롤 표시 (사이드바)
         if total_items > items_per_page:
             total_pages = (total_items - 1) // items_per_page + 1
             st.sidebar.markdown("---")
@@ -517,7 +521,6 @@ else:
         else:
             current_batch_pks = pk_list
 
-        # 잘라낸 데이터만 렌더링
         for pk in current_batch_pks:
             group = grouped.get_group(pk)
             row = group.iloc[0]
