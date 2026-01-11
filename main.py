@@ -327,82 +327,80 @@ if not user_email:
 USER_ID = st.session_state.user_id
 
 # --------------------------------------------------
-# 5. 즐겨찾기 불러오기
+# 5. 즐겨찾기 로직 (수정: '별표' 열 기반 및 세션 관리)
 # --------------------------------------------------
-if "favorites" not in st.session_state or st.session_state.get('last_user') != USER_ID:
-    try:
-        records = fav_sheet.get_all_records()
-        st.session_state.favorites = {str(r["PK"]) for r in records if str(r["user_id"]).strip() == USER_ID}
-        st.session_state.last_user = USER_ID
-    except: st.session_state.favorites = set()
+if "favorites" not in st.session_state:
+    # 초기 로드 시 '별표' 열에 데이터가 있는 PK들을 세션에 담습니다.
+    starred_pks = set(df[df['별표'].str.strip() != ""]["PK"].unique())
+    st.session_state.favorites = starred_pks
+
+def toggle_favorite(pk):
+    if pk in st.session_state.favorites:
+        st.session_state.favorites.remove(pk)
+    else:
+        st.session_state.favorites.add(pk)
 
 # --------------------------------------------------
-# 6. 필터 및 모드 설정 (검색 기능 추가)
+# 6. 필터 및 모드 설정
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
-
-# [추가] 검색어 입력창
 search_query = st.sidebar.text_input("개념 검색", placeholder="검색어를 입력하세요...").strip()
 
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
 only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
-view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"])
+view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "🃏 암기카드", "💛 즐겨찾기만"])
 
 filtered_df = df.copy()
 
-# [추가] 검색 필터 적용 로직
+# 즐겨찾기 필터 적용 (수정됨)
+if view_mode == "💛 즐겨찾기만":
+    filtered_df = filtered_df[filtered_df["PK"].isin(st.session_state.favorites)]
+
+# 검색 및 기타 필터 (기존 유지)
 if search_query:
-    # '구분' 또는 '개념' 열에서 검색어 포함 여부 확인 (대소문자 무시)
     filtered_df = filtered_df[
         filtered_df['구분'].str.contains(search_query, case=False, na=False) |
         filtered_df['개념'].str.contains(search_query, case=False, na=False)
     ]
-
 if only_high_freq:
     filtered_df = filtered_df[filtered_df['개념빈출_J'] >= 3]
-
 if sort_by_freq:
     filtered_df = filtered_df.sort_values(by='개념빈출_J', ascending=False)
 
-for col, label in [("과목", "과목"), ("대카테고리", "대카테고리"), ("소카테고리", "소카테고리")]:
-    if col in filtered_df.columns:
-        options = ["전체"] + list(filtered_df[col][filtered_df[col] != ""].unique())
-        sel = st.sidebar.selectbox(f"{label} 선택", options)
-        if sel != "전체": filtered_df = filtered_df[filtered_df[col] == sel]
-
-if view_mode == "💛 즐겨찾기만":
-    filtered_df = filtered_df[filtered_df["PK"].isin(st.session_state.favorites)]
-
 # --------------------------------------------------
-# 7. 렌더링 함수
+# 7. 렌더링 함수 (수정: 별표 버튼 추가)
 # --------------------------------------------------
-if filtered_df.empty:
-    st.info("선택한 조건에 해당하는 개념이 없습니다.")
-else:
-    grouped = filtered_df.groupby("PK", sort=False)
-    pk_list = list(grouped.groups.keys())
+def render_concept_block(row, pk_val):
+    num_val = str(row.get('숫구', '')).strip().replace(".0", "") or pk_val
+    freq_val = str(row.get('개념빈출_J', '')).strip()
+    badge_html = f"<span class='freq-badge'>{freq_val}회</span>" if freq_val != "0" else ""
+    clean_gubun = row.get('구분','').replace('\n', ' ')
 
-    def render_concept_block(row, pk_val):
-        num_val = str(row.get('숫구', '')).strip().replace(".0", "") or pk_val
-        freq_val = str(row.get('개념빈출_J', '')).strip()
-        badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
-
-        # 구분 내용 중 줄바꿈(\n)을 공백(' ')으로 교체하여 한 줄로 출력되게 함
-        clean_gubun = row.get('구분','').replace('\n', ' ')
-
+    # 제목 영역과 별표 버튼 배치
+    col_t, col_b = st.columns([0.85, 0.15])
+    with col_t:
         st.markdown(f"""
-        <div class='title-row'>
-            <div class='concept-title-text'>{num_val}) {clean_gubun}</div>
-            {badge_html}
+        <div class='title-row' style='border-bottom:none; margin-bottom:0;'>
+            <div class='concept-title-text'>{num_val}) {clean_gubun} {badge_html}</div>
         </div>
         """, unsafe_allow_html=True)
-        
-        concept_raw = str(row.get('개념', ''))
-        st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
+    
+    with col_b:
+        # 즐겨찾기 상태에 따른 아이콘 변경
+        is_fav = pk_val in st.session_state.favorites
+        btn_label = "⭐" if is_fav else "☆"
+        if st.button(btn_label, key=f"fav_{pk_val}"):
+            toggle_favorite(pk_val)
+            st.rerun()
 
-        concept_img_url = get_direct_url(row.get('개념이미지_I', ''))
-        if concept_img_url:
-            st.image(concept_img_url, use_container_width=False, width=500)
+    st.markdown("<hr style='margin:0 0 10px 0; border:0; border-top:2px solid #eaeaea;'>", unsafe_allow_html=True)
+    
+    concept_raw = str(row.get('개념', ''))
+    st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
+
+    concept_img_url = get_direct_url(row.get('개념이미지_I', ''))
+    if concept_img_url:
+        st.image(concept_img_url, use_container_width=False, width=500)
 
     def render_questions(valid_qs):
         st.markdown("<div class='section-gap'></div>", unsafe_allow_html=True)
