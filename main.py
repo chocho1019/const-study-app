@@ -138,11 +138,25 @@ st.markdown("""
     color: #7F8C8D;             
     margin-bottom: 4px;        
 }
+/* 버튼 스타일 수정: 너비 확장 및 연한 회색 배경 */
 .stButton button {
     width: 100%;
-    padding: 0.25rem 0.5rem;
+    padding: 0.6rem 1rem; /* 상하 패딩을 늘려 클릭 영역 확대 */
+    background-color: #f0f2f6; /* 아주 연한 회색 배경 */
+    border: 1px solid #d1d5db; /* 경계선도 연하게 추가 */
+    color: #31333F; /* 글자색 유지 */
+    height: 3rem; /* 버튼 높이 고정으로 가시성 확보 */
 }
-hr { margin: 1.5rem 0; }
+
+/* 버튼 위에 마우스를 올렸을 때(Hover)나 클릭했을 때의 피드백 */
+.stButton button:hover {
+    background-color: #e2e8f0;
+    border-color: #cbd5e1;
+}
+
+.stButton button:active {
+    background-color: #cbd5e1;
+}
 
 .concept-img {
     margin: 10px 0;
@@ -360,23 +374,21 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-        # --------------------------------------------------
-        # 버튼 배치 수정: 이전/다음 버튼을 각각 풀사이즈로 배치
-        # --------------------------------------------------
-        st.write("") # 간격 확보
+         # 버튼 배치 (다음 버튼 오른쪽 고정 및 영역 확장)
+        btn_cols = st.columns([1.5, 1, 1.5]) # 좌우 버튼 컬럼 비중을 높여 더 길게 만듦
+        with btn_cols[0]:
+            if st.button("이전"):
+                st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
+                st.rerun()
+        with btn_cols[1]:
+            # 페이지 표시 중앙 정렬 유지
+            st.markdown(f"<p style='text-align:center; margin-top: 12px; font-weight: 500;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
+        with btn_cols[2]:
+            if st.button("다음"):
+                st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
+                st.rerun()
         
-        # 1. 다음 버튼 (가장 많이 사용하므로 상단에 크게 배치)
-        if st.button("다음"):
-            st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
-            st.rerun()
-            
-        # 2. 페이지 표시 (중앙)
-        st.markdown(f"<p style='text-align:center; margin: 10px 0; color: #888;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
-        
-        # 3. 이전 버튼
-        if st.button("이전"):
-            st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
-            st.rerun()
+       
     else:
         for pk, group in grouped:
             row = group.iloc[0]
