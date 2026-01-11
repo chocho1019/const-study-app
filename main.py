@@ -185,14 +185,45 @@ st.markdown("""
     color: #555;
 }
 
+/* --- 마크다운 테이블 디자인 최적화 --- */
 table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 10px 0;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 12px 0 !important;
+    border-top: 2px solid #cbd5e0 !important;
+    table-layout: auto !important; /* 글자 길이에 따라 자동 확장 */
+    font-size: 0.9em !important;   /* 전체 글자 크기를 개념보다 살짝 작게 */
 }
-th, td {
-    padding: 8px;
-    border: 1px solid #ddd;
+
+/* 첫 번째 행 (헤더) 설정 */
+th {
+    background-color: #f7fafc !important;
+    font-weight: bold !important;
+    text-align: left !important;
+    padding: 6px 10px !important;  /* 높이를 낮게 유지 */
+    border-bottom: 2px solid #cbd5e0 !important;
+    border-top: none !important;
+    line-height: 1.4 !important;
+}
+
+/* 첫 번째 열 (구분/카테고리) 설정 */
+td:first-child, th:first-child {
+    white-space: nowrap !important;  /* 절대 2줄 쓰기 방지 */
+    width: 1% !important;           /* 내용만큼만 최소 너비 차지 */
+    padding: 8px 15px 8px 10px !important;
+    background-color: #f8f9fa !important;
+    font-weight: bold !important;
+    vertical-align: middle !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+/* 나머지 셀 설정 */
+td {
+    padding: 8px 10px !important;
+    border: 1px solid #e2e8f0 !important;
+    vertical-align: middle !important;
+    line-height: 1.5 !important;
+    color: #4a5568 !important;
 }
 </style>
 """, unsafe_allow_html=True)
