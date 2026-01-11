@@ -276,11 +276,12 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
 # --------------------------------------------------
 # 6. 필터 및 모드 설정
 # --------------------------------------------------
+# 6. 필터 및 모드 설정 섹션
 st.sidebar.title("🔍 학습 필터")
-# (수정됨) 라벨에서 (J열 기준) 텍스트 제거
-sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
-only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
-view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"])
+# key 값을 추가하여 중복 ID 오류를 방지합니다.
+sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순", key="filter_sort")
+only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만", key="filter_high")
+view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"], key="view_mode_select")
 
 filtered_df = df.copy()
 
@@ -737,19 +738,16 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-         # 버튼 배치 (다음 버튼 오른쪽 고정 및 영역 확장)
-        btn_cols = st.columns([1.5, 1, 1.5]) # 좌우 버튼 컬럼 비중을 높여 더 길게 만듦
-        with btn_cols[0]:
-            if st.button("이전"):
-                st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
-                st.rerun()
-        with btn_cols[1]:
-            # 페이지 표시 중앙 정렬 유지
-            st.markdown(f"<p style='text-align:center; margin-top: 12px; font-weight: 500;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
-        with btn_cols[2]:
-            if st.button("다음"):
-                st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
-                st.rerun()
+        # --- 세로 풀 사이즈 버튼 (key 추가로 에러 방지) ---
+        if st.button("이전", key="btn_prev"):
+            st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
+            st.rerun()
+            
+        st.markdown(f"<p style='text-align:center; margin: 15px 0; font-weight: 500; color: #7F8C8D;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
+        
+        if st.button("다음", key="btn_next"):
+            st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
+            st.rerun()
         
        
     else:
