@@ -305,14 +305,26 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
     except: st.session_state.favorites = set()
 
 # --------------------------------------------------
-# 6. 필터 및 모드 설정
+# 6. 필터 및 모드 설정 (검색 기능 추가)
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
+
+# [추가] 검색어 입력창
+search_query = st.sidebar.text_input("개념 검색", placeholder="검색어를 입력하세요...").strip()
+
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
 only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
 view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"])
 
 filtered_df = df.copy()
+
+# [추가] 검색 필터 적용 로직
+if search_query:
+    # '구분' 또는 '개념' 열에서 검색어 포함 여부 확인 (대소문자 무시)
+    filtered_df = filtered_df[
+        filtered_df['구분'].str.contains(search_query, case=False, na=False) |
+        filtered_df['개념'].str.contains(search_query, case=False, na=False)
+    ]
 
 if only_high_freq:
     filtered_df = filtered_df[filtered_df['개념빈출_J'] >= 3]
@@ -343,7 +355,7 @@ else:
         freq_val = str(row.get('개념빈출_J', '')).strip()
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
 
-        # [수정] 구분 내용 중 줄바꿈(\n)을 공백(' ')으로 교체하여 한 줄로 출력되게 함
+        # 구분 내용 중 줄바꿈(\n)을 공백(' ')으로 교체하여 한 줄로 출력되게 함
         clean_gubun = row.get('구분','').replace('\n', ' ')
 
         st.markdown(f"""
