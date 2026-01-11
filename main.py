@@ -1,3 +1,5 @@
+
+
 import streamlit as st
 import pandas as pd
 import uuid
@@ -141,16 +143,16 @@ hr { margin: 1.5rem 0; }
 </style>
 """, unsafe_allow_html=True)
 
+# --------------------------------------------------
+# 3. 데이터 로드
+# --------------------------------------------------
 
-# --------------------------------------------------
-# 3. 데이터 로드 (개념 우선 유지 버전)
-# --------------------------------------------------
 @st.cache_data
 def load_sheet(csv_url):
     df = pd.read_csv(csv_url)
     df.columns = df.columns.str.strip()
-    # PK를 문자열로 통일하고 빈 칸 제거
     df["PK"] = df["PK"].astype(str).str.strip()
+
     return df
 
 CONCEPT_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=775019664"
@@ -159,9 +161,7 @@ QUESTION_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZ
 df_concept = load_sheet(CONCEPT_URL)
 df_question = load_sheet(QUESTION_URL)
 
-# how="left"를 통해 df_concept에 있는 모든 PK를 보존합니다.
 df = df_concept.merge(df_question, on="PK", how="left")
-
 
 # --------------------------------------------------
 # 4. 초기 사용자 인증 처리 (개선된 버전)
@@ -220,7 +220,7 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
 
     
 # --------------------------------------------------
-# 6. 사이드바 필터 (정렬 순서 수정 버전)
+# 6. 사이드바 필터 (상단 배치)
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
 
@@ -232,13 +232,10 @@ view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암
 
 filtered_df = df.copy()
 
-# 카테고리 필터링 (구글 시트 순서 유지)
+# 카테고리 필터링
 for col, label in [("과목", "과목"), ("대카테고리", "대카테고리"), ("소카테고리", "소카테고리")]:
     if col in filtered_df.columns:
-        # sorted()를 제거하여 시트에 입력된 순서대로 가져옵니다.
-        # .unique()는 데이터프레임에 등장하는 순서를 유지합니다.
-        options = ["전체"] + list(filtered_df[col].dropna().unique())
-        
+        options = ["전체"] + sorted(filtered_df[col].dropna().unique())
         sel = st.sidebar.selectbox(f"{label} 선택", options)
         if sel != "전체":
             filtered_df = filtered_df[filtered_df[col] == sel]
@@ -351,29 +348,14 @@ elif view_mode == "🃏 암기카드":
     """
     st.markdown(card_html, unsafe_allow_html=True)
 
-   # --- [수정] 암기카드 전용 이미지 출력 영역 ---
+    # --- [여기에 추가] 암기카드 전용 이미지 출력 영역 ---
     img_val_card = row.get("이미지URL")
     if pd.notna(img_val_card) and str(img_val_card).strip() not in ["", "0", "0.0", "nan", "None"]:
         target_url_card = str(img_val_card).strip()
         if target_url_card.startswith("http"):
             final_img_url_card = get_direct_url(target_url_card)
+            # 카드 아래에 이미지를 표시합니다.
             st.image(final_img_url_card, use_container_width=True)
-
-    # --- [추가] 암기카드 모드에서도 기출문제 표시 ---
-    # 암기카드 모드는 단일 행(row)이므로 해당 PK의 모든 질문을 다시 필터링해야 함
-    card_questions = df_question[df_question["PK"] == str(pk)]
-    has_q_card = not card_questions.empty and card_questions['기출문제(질문)'].notna().any()
-
-    if has_q_card:
-        with st.expander(f"📝 관련 기출문제 ({len(card_questions)}건)"):
-            for _, q_row in card_questions.iterrows():
-                # (기존 기출문제 출력 HTML 로직 동일하게 삽입)
-                year = q_row.get("기출문제(출제년도)", "연도 미상")
-                # ... (중략: 기존에 작성하신 기출문제 상세 출력 코드와 동일) ...
-                st.markdown(full_html, unsafe_allow_html=True)
-    else:
-        with st.expander("📝 관련 기출문제 (0건)"):
-            st.write("등록된 관련 기출문제가 없습니다.")
             
     # 4. 하단 네비게이션 버튼
     st.write("") 
@@ -393,13 +375,13 @@ elif view_mode == "🃏 암기카드":
 # 📚 전체 학습 / 즐겨찾기
 # ==================================================
 else:
-    # 데이터가 중복 표시되지 않도록 PK별로 그룹화
     grouped_df = filtered_df.groupby("PK", sort=False)
 
     for pk, group in grouped_df:
         row = group.iloc[0]
         is_fav = pk in st.session_state.favorites
 
+        
 
         col_heart, col_title = st.columns([0.05, 0.95])
         with col_heart:
@@ -424,27 +406,19 @@ else:
         with col_title:
             st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-
-      # --- 개념 내용 출력 ---
+        
+        # --- 개념 내용 출력 (글머리 기호 및 줄 간격 수정) ---
         if pd.notna(row.get("내용")):
             content_raw = str(row["내용"])
+            lines = content_raw.split('\n')
             
-            if "|" in content_raw and "---" in content_raw:
-                # 💡 핵심 수정: 표 내부의 <br>이 작동하도록 HTML 렌더링을 허용
-                # 마크다운 표 안에 <br>이 있으면 브라우저가 이를 줄바꿈으로 처리합니다.
-                st.write(content_raw, unsafe_allow_html=True)
-            else:
-                # 기존 리스트 출력 로직
-                lines = content_raw.split('\n')
-                html_content = "<ul style='padding-left: 20px; margin-bottom: 0; color: #333;'>"
-                for line in lines:
-                    if line.strip():
-                        # 리스트 모드일 때도 <br>을 실제 줄바꿈으로 변환
-                        clean_line = line.strip().replace("<br>", "<br/>")
-                        html_content += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{clean_line}</li>"
-                html_content += "</ul>"
-                st.markdown(html_content, unsafe_allow_html=True)
-    
+            html_content = "<ul style='padding-left: 20px; margin-bottom: 0; color: #333;'>"
+            for line in lines:
+                if line.strip():
+                    # 수정된 부분: f 다음에 따옴표 추가
+                    html_content += f"<li style='margin-bottom: 2px; line-height: 1.4;'>{line.strip()}</li>"
+            html_content += "</ul>"
+            st.markdown(html_content, unsafe_allow_html=True)
 
 
      # --- 이미지 출력 영역 (초기화 후 재작성) ---
@@ -463,13 +437,10 @@ else:
                 pass
 
 
-        
         # --- 📝 기출문제 영역 --- 
         has_question = group['기출문제(질문)'].notna().any()
-        
         if has_question:
             st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-            # 기출문제가 있을 때는 기존 로직 그대로 실행
             with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
                 for _, q_row in group.iterrows():
                     if pd.notna(q_row.get("기출문제(질문)")):
@@ -477,9 +448,17 @@ else:
                         year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
                         question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
                         
-                        # --- [기출문제 보기 우선순위 출력 로직] ---
+                        # --- [기출문제 보기 & 보기2 선택 출력 로직] ---
                         options_text = ""
-                        if pd.notna(q_row.get("기출문제(보기)")) and str(q_row["기출문제(보기)"]).strip() not in ["", "0", "nan", "None"]:
+                        
+                        # 1. '기출문제(보기2)' 원문 우선 확인
+                        manual_options = q_row.get("기출문제(보기2)")
+                        if pd.notna(manual_options) and str(manual_options).strip() not in ["", "0", "nan", "None"]:
+                            options_content = str(manual_options).replace('\n', '<br>')
+                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{options_content}</div>"
+                        
+                        # 2. '기출문제(보기2)'가 비어있을 때만 기존 자동 번호 매기기 실행
+                        elif pd.notna(q_row.get("기출문제(보기)")):
                             raw_options = str(q_row['기출문제(보기)']).split('\n')
                             valid_options = [opt.strip() for opt in raw_options if opt.strip()]
                             circ_nums = ["①", "②", "③", "④", "⑤"]
@@ -491,35 +470,29 @@ else:
                                     options_html_list.append(f"<div style='margin-bottom: 3px;'>- {opt}</div>")
                             options_content = "".join(options_html_list)
                             options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
-                        elif pd.notna(q_row.get("기출문제(보기1)")) and str(q_row["기출문제(보기1)"]).strip() not in ["", "0", "nan", "None"]:
-                            opt1_content = str(q_row["기출문제(보기1)"]).replace('\n', '<br>')
-                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{opt1_content}</div>"
-                        elif pd.notna(q_row.get("기출문제(보기2)")) and str(q_row["기출문제(보기2)"]).strip() not in ["", "0", "nan", "None"]:
-                            opt2_content = str(q_row["기출문제(보기2)"]).replace('\n', '<br>')
-                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px; line-height: 1.6;'>{opt2_content}</div>"
 
-                        # --- [정답 처리 로직] ---
+                        # --- [정답 처리 로직: 오류 방지를 위해 한 줄로 정리] ---
                         ans_display = ""
                         if pd.notna(q_row.get("정답")):
-                            try: ans_val = int(float(q_row['정답']))
-                            except: ans_val = q_row['정답']
+                            try:
+                                ans_val = int(float(q_row['정답']))
+                            except:
+                                ans_val = q_row['정답']
+                            # 줄바꿈 오류를 피하기 위해 f-string을 한 줄로 구성했습니다.
                             ans_display = f"<div style='margin-top: 15px; padding-left: 15px; color: #333; font-size: 0.95em; font-weight: normal;'> * 정답 : {ans_val}번</div>"
 
-                        # 전체 문제 박스 출력
+                        # --- 전체 문제 박스 구성 및 출력 ---
                         full_html = f"""
                         <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
-                            {year_style} {question_text} {options_text} {ans_display}
+                            {year_style}
+                            {question_text}
+                            {options_text}
+                            {ans_display}
                         </div>
                         """
                         st.markdown(full_html, unsafe_allow_html=True)
-        else:
-            # 💡 이 부분이 추가된 핵심입니다! 기출이 없어도 펼침창(Expander)을 보여줍니다.
-            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-            with st.expander("📝 관련 기출문제 (0건)"):
-                st.write("등록된 관련 기출문제가 없습니다.")
 
-    
-                  
+                        
         st.divider()
 
 # --------------------------------------------------
