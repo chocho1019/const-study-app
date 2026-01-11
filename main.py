@@ -160,12 +160,12 @@ st.markdown("""
 }
 
 .text-line {
-    margin-bottom: 4px;
-    padding-left: 22px;
-    text-indent: -22px;
+   margin-bottom: 4px;
+    /* 왼쪽 여백과 들여쓰기 값을 조절하여 동그라미 숫자와 글자 시작 열을 맞춤 */
+    padding-left: 1.5em; 
+    text-indent: -1.5em;
     line-height: 1.6;
     word-break: keep-all;
-}
 
 table {
     width: 100%;
