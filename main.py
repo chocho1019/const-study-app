@@ -409,31 +409,27 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-       st.markdown("<div class='nav-btn-row'>", unsafe_allow_html=True)
+           st.markdown("<div class='nav-btn-row'>", unsafe_allow_html=True)
 
-col_prev, col_center, col_next = st.columns([1, 1, 1])
+    col_prev, col_center, col_next = st.columns([1, 1, 1])
 
-with col_prev:
-    st.markdown("<div class='nav-btn'>", unsafe_allow_html=True)
-    if st.button("이전"):
-        st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+    with col_prev:
+        st.markdown("<div class='nav-btn'>", unsafe_allow_html=True)
+        if st.button("이전"):
+            st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
-with col_center:
-    st.markdown(
-        f"<div class='nav-center'>{st.session_state.card_idx + 1} / {len(pk_list)}</div>",
-        unsafe_allow_html=True
-    )
+    with col_center:
+        st.markdown(
+            f"<div class='nav-center'>{st.session_state.card_idx + 1} / {len(pk_list)}</div>",
+            unsafe_allow_html=True
+        )
 
-with col_next:
-    st.markdown("<div class='nav-btn'>", unsafe_allow_html=True)
-    if st.button("다음"):
-        st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
+    with col_next:
+        st.markdown("<div class='nav-btn'>", unsafe_allow_html=True)
+        if st.button("다음"):
+            st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.car
 
     else:
         for pk, group in grouped:
