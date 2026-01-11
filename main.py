@@ -51,11 +51,11 @@ gc = get_gspread_client()
 def get_working_sheets():
     try:
         doc = gc.open_by_key(SPREADSHEET_ID)
-        return doc.worksheet("users"), doc.worksheet("테스트용")
+        return doc.worksheet("users"), doc.worksheet("favorites")
     except Exception as e:
         return None, None
 
-user_sheet, main_data_sheet = get_working_sheets()
+user_sheet, fav_sheet = get_working_sheets()
 
 # --------------------------------------------------
 # 1. 앱 설정
@@ -63,77 +63,171 @@ user_sheet, main_data_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (로그인 버튼 보정 포함)
+# 2. 스타일 (기존 스타일 유지 및 즐겨찾기 버튼 보완)
 # --------------------------------------------------
 st.markdown("""
 <style>
-.concept-card { background-color: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #eee; margin-bottom: 20px; }
-
-.title-text-wrapper {
+.concept-card {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #eee;
+    margin-bottom: 20px;
+}
+.title-row {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    flex-grow: 1;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+}
+.concept-title-text {
+    font-size: 20px;
+    font-weight: bold;
+    color: #2E4053;
+}
+.freq-badge {
+    border: 1px solid #bbb;     
+    color: #777;                
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;        
+}
+.section-gap {
+    height: 25px;
+    width: 100%;
+}
+.question-box {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid #e0e0e0;
+}
+.q-year {
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 4px; 
+}
+.q-text {
+    font-weight: bold;
+    color: #2E4053;
+    margin-bottom: 8px;
+    font-size: 15px;
+    display: block; 
+}
+.a-text {
+    color: #444;
+    font-size: 14px;
+    line-height: 1.6; 
+}
+.app-logo {
+    font-size: 12px;            
+    font-weight: 300;            
+    color: #a8b3b4;             
+    text-align: right;
+    margin-bottom: 0.5rem;
+}
+.concept-category {
+    font-size: 14px;        
+    font-weight: 400;            
+    color: #7F8C8D;             
+    margin-bottom: 4px;        
 }
 
-.concept-title-text { 
-    font-size: 19px; 
-    font-weight: bold; 
-    color: #2E4053; 
-    line-height: 1.2;
-    margin: 0;
+/* 버튼 스타일: 하트 버튼을 위해 배경색 투명 옵션 추가 가능성 대비 */
+.stButton button {
+    width: 100%;
+    padding: 0.6rem 0.5rem;
+    background-color: #f1f3f5 !important;
+    border: 1px solid #dee2e6 !important;
+    color: #495057 !important;
+    transition: background-color 0.3s;
 }
 
-.freq-badge { 
-    border: 1px solid #bbb; 
-    color: #777; 
-    border-radius: 4px; 
-    padding: 2px 6px; 
-    font-size: 12px; 
-    font-weight: 500; 
-    white-space: nowrap;
-    margin-left: 8px;
-    background-color: white;
-}
-
-.section-gap { height: 25px; width: 100%; }
-.question-box { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e0e0e0; }
-.q-year { color: #888; font-size: 12px; margin-bottom: 4px; }
-.q-text { font-weight: bold; color: #2E4053; margin-bottom: 8px; font-size: 15px; display: block; }
-.a-text { color: #444; font-size: 14px; line-height: 1.6; }
-.app-logo { font-size: 12px; font-weight: 300; color: #a8b3b4; text-align: right; margin-bottom: 0.5rem; }
-.concept-category { font-size: 14px; font-weight: 400; color: #7F8C8D; margin-bottom: 4px; }
-
-/* 버튼 기본 스타일 */
-.stButton button { width: 100%; padding: 0.6rem 0.5rem; background-color: #f1f3f5 !important; border: 1px solid #dee2e6 !important; color: #495057 !important; transition: background-color 0.3s; }
-.stButton button:hover { background-color: #e9ecef !important; border-color: #ced4da !important; }
-
-/* 사이드바 로그인 버튼 보정: 글자가 다 보이도록 최소 너비 설정 */
-[data-testid="stSidebar"] .stButton button {
-    min-width: 80px !important;
-    width: auto !important;
-    padding: 0.5rem 1rem !important;
-}
-
-/* 하트 버튼 스타일 유지 */
-.stButton > button[kind="secondary"] {
-    width: 34px !important;
-    height: 34px !important;
+/* 하트 전용 버튼 스타일 (투명 배경) */
+div[data-testid="stHorizontalBlock"] .stButton button {
+    background-color: transparent !important;
+    border: none !important;
+    font-size: 24px !important;
     padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 18px !important;
+    margin-top: -5px;
 }
 
-.concept-img { margin: 10px 0; border-radius: 8px; max-width: 100%; }
-.text-line { margin-bottom: 4px; padding-left: 1.5em; text-indent: -1.0em; line-height: 1.6; word-break: keep-all; }
-.text-hyphen { margin-bottom: 4px; padding-left: 1.5em; text-indent: -0.6em; line-height: 1.6; word-break: keep-all; }
-.text-indent-extra { margin-bottom: 4px; padding-left: 2.5em; text-indent: -1.0em; line-height: 1.6; word-break: keep-all; color: #555; }
-table { width: 100% !important; border-collapse: collapse !important; margin: 12px 0 !important; border-top: 2px solid #cbd5e0 !important; table-layout: auto !important; font-size: 0.9em !important; }
-th { background-color: #f7fafc !important; font-weight: bold !important; text-align: left !important; padding: 6px 10px !important; border-bottom: 2px solid #cbd5e0 !important; border-top: none !important; line-height: 1.4 !important; }
-td:first-child, th:first-child { white-space: nowrap !important; width: 1% !important; padding: 8px 15px 8px 10px !important; background-color: #f8f9fa !important; font-weight: bold !important; vertical-align: middle !important; border-right: 1px solid #e2e8f0 !important; }
-td { padding: 8px 10px !important; border: 1px solid #e2e8f0 !important; vertical-align: middle !important; line-height: 1.5 !important; color: #4a5568 !important; }
+.stButton button:hover {
+    background-color: #e9ecef !important;
+    border-color: #ced4da !important;
+}
+
+.concept-img {
+    margin: 10px 0;
+    border-radius: 8px;
+    max-width: 100%;
+}
+
+.text-line {
+    margin-bottom: 4px;
+    padding-left: 1.5em; 
+    text-indent: -1.0em;
+    line-height: 1.6;
+    word-break: keep-all;
+}
+
+.text-hyphen {
+    margin-bottom: 4px;
+    padding-left: 1.5em; 
+    text-indent: -0.6em;
+    line-height: 1.6;
+    word-break: keep-all;
+}
+
+.text-indent-extra {
+    margin-bottom: 4px;
+    padding-left: 2.5em; 
+    text-indent: -1.0em;
+    line-height: 1.6;
+    word-break: keep-all;
+    color: #555;
+}
+
+table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 12px 0 !important;
+    border-top: 2px solid #cbd5e0 !important;
+    table-layout: auto !important; 
+    font-size: 0.9em !important;   
+}
+
+th {
+    background-color: #f7fafc !important;
+    font-weight: bold !important;
+    text-align: left !important;
+    padding: 6px 10px !important;  
+    border-bottom: 2px solid #cbd5e0 !important;
+    border-top: none !important;
+    line-height: 1.4 !important;
+}
+
+td:first-child, th:first-child {
+    white-space: nowrap !important;  
+    width: 1% !important;           
+    padding: 8px 15px 8px 10px !important;
+    background-color: #f8f9fa !important;
+    font-weight: bold !important;
+    vertical-align: middle !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+td {
+    padding: 8px 10px !important;
+    border: 1px solid #e2e8f0 !important;
+    vertical-align: middle !important;
+    line-height: 1.5 !important;
+    color: #4a5568 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -142,7 +236,8 @@ td { padding: 8px 10px !important; border: 1px solid #e2e8f0 !important; vertica
 # --------------------------------------------------
 def format_smart_text(text):
     if not text: return ""
-    if "|" in text and "---" in text: return text.replace('\n', '  \n')
+    if "|" in text and "---" in text:
+        return text.replace('\n', '  \n')
     lines = text.split('\n')
     html_output = ""
     for line in lines:
@@ -161,21 +256,28 @@ def format_smart_text(text):
 @st.cache_data(ttl=600)
 def load_data():
     try:
-        all_values = main_data_sheet.get_all_values()
+        doc = gc.open_by_key(SPREADSHEET_ID)
+        sheet = doc.worksheet("테스트용")
+        all_values = sheet.get_all_values()
         if not all_values: return pd.DataFrame()
+        
         headers = all_values[0]
         data = all_values[1:]
         df = pd.DataFrame(data, columns=headers)
+        
+        # 기본 열 처리
         if len(headers) >= 9: df['개념이미지_I'] = df.iloc[:, 8]
         if len(headers) >= 10: 
             df['개념빈출_J'] = pd.to_numeric(df.iloc[:, 9].str.replace(r'[^0-9]', '', regex=True), errors='coerce').fillna(0).astype(int)
         if len(headers) >= 12: df['숫문_L'] = df.iloc[:, 11]
         if len(headers) >= 14: df['문제이미지_N'] = df.iloc[:, 13]
+
         df = df.loc[:, ~df.columns.duplicated()]
         df.columns = df.columns.str.strip()
+        
         if "fpk" in df.columns and "PK" in df.columns:
             df["PK"] = df.apply(
-                lambda row: str(row["fpk"]).strip() if (str(row["PK"]).strip() == "" or pd.isna(row["PK"])) and str(row.get("fpk", "")).strip() != "" 
+                lambda row: row["fpk"].strip() if (str(row["PK"]).strip() == "" or pd.isna(row["PK"])) and str(row.get("fpk", "")).strip() != "" 
                 else str(row["PK"]).strip(), axis=1
             )
         return df
@@ -184,6 +286,13 @@ def load_data():
         return pd.DataFrame()
 
 df = load_data()
+
+# [추가] 즐겨찾기 상태 변경 함수
+def toggle_favorite(pk_val):
+    if pk_val in st.session_state.favorites:
+        st.session_state.favorites.remove(pk_val)
+    else:
+        st.session_state.favorites.add(pk_val)
 
 # --------------------------------------------------
 # 4. 사용자 인증
@@ -212,13 +321,23 @@ if not user_email:
             st.sidebar.error("등록되지 않은 이메일입니다.")
     st.stop()
 
+USER_ID = st.session_state.user_id
+
 # --------------------------------------------------
-# 5. 즐겨찾기 상태 초기화 및 관리
+# 5. 즐겨찾기 불러오기 및 '별표' 열 동기화
 # --------------------------------------------------
-if "favorites" not in st.session_state:
-    if "별표" in df.columns:
-        st.session_state.favorites = set(df[df['별표'].str.strip() != ""]["PK"].unique())
-    else:
+if "favorites" not in st.session_state or st.session_state.get('last_user') != USER_ID:
+    try:
+        records = fav_sheet.get_all_records()
+        st.session_state.favorites = {str(r["PK"]) for r in records if str(r["user_id"]).strip() == USER_ID}
+        
+        # [중요] 시트의 '별표' 열에 체크된 항목 자동 추가
+        if "별표" in df.columns:
+            star_pks = set(df[df['별표'].astype(str).str.strip() != ""]["PK"].unique())
+            st.session_state.favorites.update(star_pks)
+            
+        st.session_state.last_user = USER_ID
+    except: 
         st.session_state.favorites = set()
 
 # --------------------------------------------------
@@ -228,7 +347,7 @@ st.sidebar.title("🔍 학습 필터")
 search_query = st.sidebar.text_input("개념 검색", placeholder="검색어를 입력하세요...").strip()
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
 only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
-view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "🃏 암기카드", "💛 즐겨찾기만"])
+view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"])
 
 filtered_df = df.copy()
 
@@ -237,8 +356,10 @@ if search_query:
         filtered_df['구분'].str.contains(search_query, case=False, na=False) |
         filtered_df['개념'].str.contains(search_query, case=False, na=False)
     ]
+
 if only_high_freq:
     filtered_df = filtered_df[filtered_df['개념빈출_J'] >= 3]
+
 if sort_by_freq:
     filtered_df = filtered_df.sort_values(by='개념빈출_J', ascending=False)
 
@@ -266,28 +387,26 @@ else:
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
         clean_gubun = row.get('구분','').replace('\n', ' ')
 
-        t_col1, t_col2 = st.columns([1, 9])
+        # --- [변경] 타이틀 좌측에 하트 버튼 배치 ---
+        col_fav, col_tit = st.columns([0.06, 0.94])
         
-        with t_col1:
+        with col_fav:
             is_fav = pk_val in st.session_state.favorites
             heart_icon = "💛" if is_fav else "🤍"
-            # 즐겨찾기 클릭 로직 수정: 무한 로딩 방지 및 상태 즉시 반영
-            if st.button(heart_icon, key=f"heart_{pk_val}"):
-                if is_fav:
-                    st.session_state.favorites.remove(pk_val)
-                else:
-                    st.session_state.favorites.add(pk_val)
+            if st.button(heart_icon, key=f"fav_{pk_val}"):
+                toggle_favorite(pk_val)
                 st.rerun()
 
-        with t_col2:
+        with col_tit:
             st.markdown(f"""
-                <div class='title-text-wrapper' style='height: 38px;'>
-                    <div class='concept-title-text'>{num_val}) {clean_gubun}</div>
-                    {badge_html}
-                </div>
+            <div class='title-row' style='border-bottom:none; margin-bottom:0;'>
+                <div class='concept-title-text'>{num_val}) {clean_gubun}</div>
+                {badge_html}
+            </div>
             """, unsafe_allow_html=True)
-
-        st.markdown("<hr style='margin: 2px 0 15px 0; border: none; border-bottom: 2px solid #eaeaea;'>", unsafe_allow_html=True)
+        
+        # 타이틀 하단 밑줄
+        st.markdown("<div style='border-bottom: 2px solid #eaeaea; margin-bottom: 12px; margin-top: -5px;'></div>", unsafe_allow_html=True)
         
         concept_raw = str(row.get('개념', ''))
         st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
@@ -304,22 +423,22 @@ else:
                     year_info = str(q.get('출제년도', '')).strip() or str(q.get('문제빈도 출제년도', '')).strip()
                     year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
                     q_num = str(q.get('숫문_L', '')).strip().replace(".0", "")
-                    q_num_display = f"{q_num} " if "." in q_num else f"{q_num}. " if q_num else "Q. "
+                    q_num_display = f"{q_num} " if q_num and "." in q_num else f"{q_num}. " if q_num else "Q. "
                     q_text = str(q.get('문제',''))
                     a_text = str(q.get('정답',''))
                     q_img_url = get_direct_url(q.get('문제이미지_N', ''))
-                    q_img_html = f"<div style='text-align:center;'><img src='{q_img_url}' class='concept-img' width='400'></div>" if q_img_url else ""
+                    q_img_html = f"<img src='{q_img_url}' class='concept-img' width='400'>" if q_img_url else ""
                     st.markdown(f"""
                     <div class='question-box'>
                         {year_html}
                         <div class='q-text'>{q_num_display}{q_text}</div>
-                        {q_img_html}
+                        <div style='text-align:center;'>{q_img_html}</div>
                         <div class='a-text' style='margin-top:10px;'>{format_smart_text(a_text)}</div>
                     </div>
                     """, unsafe_allow_html=True)
 
     # --------------------------------------------------
-    # 8. 뷰 모드 실행
+    # 뷰 모드 실행
     # --------------------------------------------------
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
@@ -331,18 +450,17 @@ else:
         with st.container(border=True):
             render_concept_block(row, pk)
         render_questions(group[group['문제'].str.strip() != ""])
+        st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
         st.divider()
-        col1, col2, col3 = st.columns([1,2,1])
-        with col1:
-            if st.button("이전", key="btn_prev", disabled=(st.session_state.card_idx == 0)):
-                st.session_state.card_idx -= 1
-                st.rerun()
-        with col2:
-            st.markdown(f"<div style='text-align:center; font-weight:bold; color:#666;'>{st.session_state.card_idx + 1} / {len(pk_list)}</div>", unsafe_allow_html=True)
-        with col3:
-            if st.button("다음", key="btn_next", disabled=(st.session_state.card_idx == len(pk_list) - 1)):
-                st.session_state.card_idx += 1
-                st.rerun()
+        current_idx = st.session_state.card_idx
+        total_count = len(pk_list)
+        if st.button("이전", key="btn_prev", use_container_width=True, disabled=(current_idx == 0)):
+            st.session_state.card_idx = max(0, current_idx - 1)
+            st.rerun()
+        st.markdown(f"<div style='text-align: center; height: 40px; line-height: 40px; font-size: 16px; font-weight: bold; color: #666; margin: 2px 0;'>{current_idx + 1} / {total_count}</div>", unsafe_allow_html=True)
+        if st.button("다음", key="btn_next", use_container_width=True, disabled=(current_idx == total_count - 1)):
+            st.session_state.card_idx = min(total_count - 1, current_idx + 1)
+            st.rerun()
     else:
         for pk, group in grouped:
             row = group.iloc[0]
