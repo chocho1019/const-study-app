@@ -63,30 +63,37 @@ user_sheet, main_data_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (정렬 문제 해결을 위한 CSS 보정)
+# 2. 스타일 (완벽한 한 줄 정렬을 위한 수정)
 # --------------------------------------------------
 st.markdown("""
 <style>
 .concept-card { background-color: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #eee; margin-bottom: 20px; }
-.title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 2px solid #eaeaea; padding-bottom: 8px; }
 
-/* 제목 텍스트: 하트 버튼과 정렬 맞춤 */
+/* 제목 컨테이너: 내부 요소들을 수직 중앙 정렬 */
+.title-flex-container {
+    display: flex;
+    align-items: center;
+    justify-content: bwtween;
+    width: 100%;
+    gap: 10px;
+}
+
+/* 제목 텍스트와 배지를 감싸는 영역 */
+.title-text-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-grow: 1;
+}
+
 .concept-title-text { 
-    font-size: 20px; 
+    font-size: 19px; 
     font-weight: bold; 
     color: #2E4053; 
     line-height: 1.2;
-    display: flex;
-    align-items: center;
+    margin: 0;
 }
 
-/* 빈출 배지: 우측 상단 고정 정렬 */
-.badge-container {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    height: 100%;
-}
 .freq-badge { 
     border: 1px solid #bbb; 
     color: #777; 
@@ -94,7 +101,9 @@ st.markdown("""
     padding: 2px 6px; 
     font-size: 12px; 
     font-weight: 500; 
-    white-space: nowrap; 
+    white-space: nowrap;
+    margin-left: 8px;
+    background-color: white;
 }
 
 .section-gap { height: 25px; width: 100%; }
@@ -105,11 +114,11 @@ st.markdown("""
 .app-logo { font-size: 12px; font-weight: 300; color: #a8b3b4; text-align: right; margin-bottom: 0.5rem; }
 .concept-category { font-size: 14px; font-weight: 400; color: #7F8C8D; margin-bottom: 4px; }
 
-/* 기존 버튼 스타일 */
+/* 기존 버튼 스타일 유지 */
 .stButton button { width: 100%; padding: 0.6rem 0.5rem; background-color: #f1f3f5 !important; border: 1px solid #dee2e6 !important; color: #495057 !important; transition: background-color 0.3s; }
 .stButton button:hover { background-color: #e9ecef !important; border-color: #ced4da !important; }
 
-/* 하트 버튼 스타일 (크기를 약간 조절하여 제목 높이와 맞춤) */
+/* 하트 버튼: 제목과 수직 중앙을 맞추기 위한 미세 조정 */
 .stButton > button[kind="secondary"] {
     width: 34px !important;
     height: 34px !important;
@@ -118,7 +127,6 @@ st.markdown("""
     align-items: center !important;
     justify-content: center !important;
     font-size: 18px !important;
-    margin-top: 2px;
 }
 
 .concept-img { margin: 10px 0; border-radius: 8px; max-width: 100%; }
@@ -248,7 +256,7 @@ if view_mode == "💛 즐겨찾기만":
     filtered_df = filtered_df[filtered_df["PK"].isin(st.session_state.favorites)]
 
 # --------------------------------------------------
-# 7. 렌더링 함수 (레이아웃 보정 반영)
+# 7. 렌더링 함수 (동일 선상 정렬 로직 적용)
 # --------------------------------------------------
 if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
@@ -262,9 +270,8 @@ else:
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
         clean_gubun = row.get('구분','').replace('\n', ' ')
 
-        # 컬럼 비율 조정 (하트:제목:빈출배지 = 1:7:2)
-        # 모바일 환경을 고려하여 하트 버튼이 너무 크지 않게 배분
-        t_col1, t_col2, t_col3 = st.columns([1, 7, 2])
+        # 제목 줄 전체 레이아웃 (하트 버튼용 컬럼과 텍스트용 컬럼 2개로 분리)
+        t_col1, t_col2 = st.columns([1, 9])
         
         with t_col1:
             is_fav = pk_val in st.session_state.favorites
@@ -272,14 +279,15 @@ else:
             st.button(heart_icon, key=f"heart_{pk_val}")
 
         with t_col2:
-            # 제목을 버튼과 수평이 맞도록 CSS 클래스 적용
-            st.markdown(f"<div class='concept-title-text'>{num_val}) {clean_gubun}</div>", unsafe_allow_html=True)
-        
-        with t_col3:
-            # 빈출 배지를 우측 정렬된 컨테이너에 배치
-            st.markdown(f"<div class='badge-container'>{badge_html}</div>", unsafe_allow_html=True)
+            # 제목과 빈출배지를 하나의 HTML FlexBox로 묶어 무조건 같은 줄 우측 끝에 배치
+            st.markdown(f"""
+                <div class='title-text-wrapper' style='height: 38px;'>
+                    <div class='concept-title-text'>{num_val}) {clean_gubun}</div>
+                    {badge_html}
+                </div>
+            """, unsafe_allow_html=True)
 
-        st.markdown("<hr style='margin: 5px 0 15px 0; border: none; border-bottom: 2px solid #eaeaea;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 2px 0 15px 0; border: none; border-bottom: 2px solid #eaeaea;'>", unsafe_allow_html=True)
         
         concept_raw = str(row.get('개념', ''))
         st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
