@@ -138,11 +138,20 @@ st.markdown("""
     color: #7F8C8D;             
     margin-bottom: 4px;        
 }
+/* 기존 스타일에서 이 부분을 찾아 교체하거나 덮어쓰세요 */
 .stButton button {
     width: 100%;
-    padding: 0.25rem 0.5rem;
+    padding: 0.6rem 0.5rem; /* 클릭하기 좋게 패딩을 살짝 늘렸습니다 */
+    background-color: #f1f3f5 !important; /* 연한 회색 배경 */
+    border: 1px solid #dee2e6 !important; /* 테두리도 연하게 설정 */
+    color: #495057 !important; /* 글자색 */
+    transition: background-color 0.3s;
 }
-hr { margin: 1.5rem 0; }
+
+.stButton button:hover {
+    background-color: #e9ecef !important; /* 마우스 올렸을 때 약간 더 진한 회색 */
+    border-color: #ced4da !important;
+}
 
 .concept-img {
     margin: 10px 0;
