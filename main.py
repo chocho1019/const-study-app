@@ -63,7 +63,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (CSS 문법 오류 해결 및 즐겨찾기 버튼 스타일 추가)
+# 2. 스타일 (즐겨찾기 버튼 및 레이아웃 유지)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -95,15 +95,22 @@ st.markdown("""
     font-size: 13px;
     font-weight: 500;
     white-space: nowrap;        
+    display: inline-block;
+    vertical-align: middle;
 }
-/* 즐겨찾기 버튼 스타일: 투명 배경에 아이콘만 강조 */
-.stButton > button[kind="secondary"] {
-    background-color: transparent !important;
+/* 즐겨찾기 하트 버튼 전용 스타일 */
+.stButton > button {
     border: none !important;
+    background-color: transparent !important;
     padding: 0 !important;
     font-size: 22px !important;
     line-height: 1 !important;
     box-shadow: none !important;
+    color: inherit !important;
+}
+.stButton > button:hover {
+    background-color: transparent !important;
+    color: #FFD700 !important; /* 호버 시 골드색 */
 }
 .section-gap { height: 25px; width: 100%; }
 .question-box {
@@ -198,7 +205,7 @@ if not user_email:
 USER_ID = st.session_state.user_id
 
 # --------------------------------------------------
-# 5. 즐겨찾기 로직 (토글 함수 추가)
+# 5. 즐겨찾기 로직
 # --------------------------------------------------
 if "favorites" not in st.session_state or st.session_state.get('last_user') != USER_ID:
     try:
@@ -243,7 +250,7 @@ if view_mode == "💛 즐겨찾기만":
     filtered_df = filtered_df[filtered_df["PK"].astype(str).isin(st.session_state.favorites)]
 
 # --------------------------------------------------
-# 7. 렌더링 함수 (즐겨찾기 버튼 부활)
+# 7. 렌더링 함수
 # --------------------------------------------------
 if filtered_df.empty:
     st.info("조건에 맞는 개념이 없습니다.")
@@ -252,8 +259,8 @@ else:
     pk_list = list(grouped.groups.keys())
 
     def render_concept_block(row, pk_val):
-        # 헤더 영역 레이아웃 (제목 | 빈출배지 + 하트버튼)
-        col_title, col_meta = st.columns([0.8, 0.2])
+        # 상단 헤더 레이아웃 (제목 영역 / 메타 정보 영역)
+        col_title, col_meta = st.columns([0.75, 0.25])
         
         with col_title:
             num_val = str(row.get('숫구', '')).strip().replace(".0", "") or str(pk_val)
@@ -261,16 +268,21 @@ else:
             st.markdown(f"<div class='concept-title-text'>{num_val}) {clean_gubun}</div>", unsafe_allow_html=True)
             
         with col_meta:
-            freq_val = str(row.get('개념빈출_J', '')).strip()
-            badge_html = f"<span class='freq-badge'>{freq_val}회</span>" if freq_val != "0" else ""
+            # 빈출 배지와 하트 버튼을 한 줄에 나란히 배치 (배지가 넓으므로 2:1 비율)
+            meta_inner_1, meta_inner_2 = st.columns([2, 1])
             
-            # 배지와 버튼을 나란히 배치
-            m1, m2 = st.columns([1, 1])
-            with m1: st.markdown(badge_html, unsafe_allow_html=True)
-            with m2:
+            freq_val = str(row.get('개념빈출_J', '')).strip()
+            with meta_inner_1:
+                if freq_val != "0":
+                    st.markdown(f"<div class='freq-badge'>{freq_val}회</div>", unsafe_allow_html=True)
+                else:
+                    st.write("") # 빈 공간 유지
+            
+            with meta_inner_2:
                 is_fav = str(pk_val) in st.session_state.favorites
-                heart = "💛" if is_fav else "🤍"
-                if st.button(heart, key=f"fav_{pk_val}_{view_mode}", help="즐겨찾기 토글"):
+                heart_icon = "💛" if is_fav else "🤍"
+                # 버튼 클릭 시 즉시 토글 후 리런
+                if st.button(heart_icon, key=f"btn_fav_{pk_val}_{row.name}"):
                     toggle_fav(pk_val)
                     st.rerun()
 
@@ -286,25 +298,37 @@ else:
                     year = str(q.get('출제년도', '')).strip()
                     st.markdown(f"<div class='question-box'><div class='q-year'>[{year}]</div><div class='q-text'>{q.get('문제','')}</div><div class='a-text'>{format_smart_text(str(q.get('정답','')))}</div></div>", unsafe_allow_html=True)
 
-    # 모드별 실행
+    # 모드별 실행 로직
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
         idx = st.session_state.card_idx % len(pk_list)
         pk = pk_list[idx]
         group = grouped.get_group(pk)
         row = group.iloc[0]
+        
         st.markdown(f"<div class='concept-category'>{row.get('과목','')} / {row.get('대카테고리','')}</div>", unsafe_allow_html=True)
-        with st.container(border=True): render_concept_block(row, pk)
+        with st.container(border=True): 
+            render_concept_block(row, pk)
+        
         render_questions(group[group['문제'].str.strip() != ""])
         
-        c1, c2, c3 = st.columns([1, 2, 1])
-        if c1.button("이전"): st.session_state.card_idx -= 1; st.rerun()
-        c2.markdown(f"<div style='text-align:center;'><b>{idx+1} / {len(pk_list)}</b></div>", unsafe_allow_html=True)
-        if c3.button("다음"): st.session_state.card_idx += 1; st.rerun()
-    else:
+        # 하단 네비게이션
+        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
+        nav1, nav2, nav3 = st.columns([1, 2, 1])
+        if nav1.button("⬅️ 이전", key="prev_card", use_container_width=True): 
+            st.session_state.card_idx -= 1
+            st.rerun()
+        nav2.markdown(f"<div style='text-align:center; font-size:18px; font-weight:bold; padding-top:5px;'>{idx+1} / {len(pk_list)}</div>", unsafe_allow_html=True)
+        if nav3.button("다음 ➡️", key="next_card", use_container_width=True): 
+            st.session_state.card_idx += 1
+            st.rerun()
+            
+    else: # 전체 학습 및 즐겨찾기만 모드
         for pk, group in grouped:
-            render_concept_block(group.iloc[0], pk)
-            render_questions(group[group['문제'].str.strip() != ""])
+            row = group.iloc[0]
+            with st.container():
+                render_concept_block(row, pk)
+                render_questions(group[group['문제'].str.strip() != ""])
             st.divider()
 
 st.markdown("<div class='app-logo'>ⓒ초카이브 건축기사</div>", unsafe_allow_html=True)
