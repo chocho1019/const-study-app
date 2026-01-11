@@ -63,14 +63,40 @@ user_sheet, main_data_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (정사각형 하트 버튼 스타일 추가)
+# 2. 스타일 (정렬 문제 해결을 위한 CSS 보정)
 # --------------------------------------------------
 st.markdown("""
 <style>
 .concept-card { background-color: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #eee; margin-bottom: 20px; }
 .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 2px solid #eaeaea; padding-bottom: 8px; }
-.concept-title-text { font-size: 20px; font-weight: bold; color: #2E4053; flex-grow: 1; margin-left: 10px; }
-.freq-badge { border: 1px solid #bbb; color: #777; border-radius: 4px; padding: 2px 8px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+
+/* 제목 텍스트: 하트 버튼과 정렬 맞춤 */
+.concept-title-text { 
+    font-size: 20px; 
+    font-weight: bold; 
+    color: #2E4053; 
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+}
+
+/* 빈출 배지: 우측 상단 고정 정렬 */
+.badge-container {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    height: 100%;
+}
+.freq-badge { 
+    border: 1px solid #bbb; 
+    color: #777; 
+    border-radius: 4px; 
+    padding: 2px 6px; 
+    font-size: 12px; 
+    font-weight: 500; 
+    white-space: nowrap; 
+}
+
 .section-gap { height: 25px; width: 100%; }
 .question-box { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e0e0e0; }
 .q-year { color: #888; font-size: 12px; margin-bottom: 4px; }
@@ -83,16 +109,16 @@ st.markdown("""
 .stButton button { width: 100%; padding: 0.6rem 0.5rem; background-color: #f1f3f5 !important; border: 1px solid #dee2e6 !important; color: #495057 !important; transition: background-color 0.3s; }
 .stButton button:hover { background-color: #e9ecef !important; border-color: #ced4da !important; }
 
-/* 하트 버튼 전용 스타일 (정사각형) */
-.heart-btn-col { display: flex; align-items: center; justify-content: center; }
+/* 하트 버튼 스타일 (크기를 약간 조절하여 제목 높이와 맞춤) */
 .stButton > button[kind="secondary"] {
-    width: 38px !important;
-    height: 38px !important;
+    width: 34px !important;
+    height: 34px !important;
     padding: 0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 20px !important;
+    font-size: 18px !important;
+    margin-top: 2px;
 }
 
 .concept-img { margin: 10px 0; border-radius: 8px; max-width: 100%; }
@@ -222,7 +248,7 @@ if view_mode == "💛 즐겨찾기만":
     filtered_df = filtered_df[filtered_df["PK"].isin(st.session_state.favorites)]
 
 # --------------------------------------------------
-# 7. 렌더링 함수 (버튼 추가 핵심 로직)
+# 7. 렌더링 함수 (레이아웃 보정 반영)
 # --------------------------------------------------
 if filtered_df.empty:
     st.info("선택한 조건에 해당하는 개념이 없습니다.")
@@ -236,23 +262,24 @@ else:
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
         clean_gubun = row.get('구분','').replace('\n', ' ')
 
-        # 제목 줄 레이아웃 수정: 하트버튼 - 제목텍스트 - 빈출배지
-        t_col1, t_col2, t_col3 = st.columns([0.5, 8.5, 1], gap="small")
+        # 컬럼 비율 조정 (하트:제목:빈출배지 = 1:7:2)
+        # 모바일 환경을 고려하여 하트 버튼이 너무 크지 않게 배분
+        t_col1, t_col2, t_col3 = st.columns([1, 7, 2])
         
         with t_col1:
-            # 시트의 '별표' 열에 데이터가 있으면 노란 하트, 없으면 빈 하트
             is_fav = pk_val in st.session_state.favorites
             heart_icon = "💛" if is_fav else "🤍"
-            # 정사각형 모양을 유지하기 위해 버튼을 배치
-            st.button(heart_icon, key=f"heart_{pk_val}", help="시트의 '별표' 열과 연동됨")
+            st.button(heart_icon, key=f"heart_{pk_val}")
 
         with t_col2:
+            # 제목을 버튼과 수평이 맞도록 CSS 클래스 적용
             st.markdown(f"<div class='concept-title-text'>{num_val}) {clean_gubun}</div>", unsafe_allow_html=True)
         
         with t_col3:
-            st.markdown(f"<div style='margin-top: 5px;'>{badge_html}</div>", unsafe_allow_html=True)
+            # 빈출 배지를 우측 정렬된 컨테이너에 배치
+            st.markdown(f"<div class='badge-container'>{badge_html}</div>", unsafe_allow_html=True)
 
-        st.markdown("<hr style='margin: 0 0 15px 0; border: none; border-bottom: 2px solid #eaeaea;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 5px 0 15px 0; border: none; border-bottom: 2px solid #eaeaea;'>", unsafe_allow_html=True)
         
         concept_raw = str(row.get('개념', ''))
         st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
