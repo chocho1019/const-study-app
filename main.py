@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import uuid
@@ -64,7 +63,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (기존 스타일 유지)
+# 2. 스타일 (기존 스타일 유지 및 보완)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -138,18 +137,17 @@ st.markdown("""
     color: #7F8C8D;             
     margin-bottom: 4px;        
 }
-/* 기존 스타일에서 이 부분을 찾아 교체하거나 덮어쓰세요 */
 .stButton button {
     width: 100%;
-    padding: 0.6rem 0.5rem; /* 클릭하기 좋게 패딩을 살짝 늘렸습니다 */
-    background-color: #f1f3f5 !important; /* 연한 회색 배경 */
-    border: 1px solid #dee2e6 !important; /* 테두리도 연하게 설정 */
-    color: #495057 !important; /* 글자색 */
+    padding: 0.6rem 0.5rem;
+    background-color: #f1f3f5 !important;
+    border: 1px solid #dee2e6 !important;
+    color: #495057 !important;
     transition: background-color 0.3s;
 }
 
 .stButton button:hover {
-    background-color: #e9ecef !important; /* 마우스 올렸을 때 약간 더 진한 회색 */
+    background-color: #e9ecef !important;
     border-color: #ced4da !important;
 }
 
@@ -161,11 +159,21 @@ st.markdown("""
 
 .text-line {
    margin-bottom: 4px;
-    /* 왼쪽 여백과 들여쓰기 값을 조절하여 동그라미 숫자와 글자 시작 열을 맞춤 */
     padding-left: 1.5em; 
     text-indent: -1.0em;
     line-height: 1.6;
     word-break: keep-all;
+}
+
+/* 추가된 '>' 기호용 들여쓰기 스타일 */
+.text-indent-extra {
+    margin-bottom: 4px;
+    padding-left: 2.5em; 
+    text-indent: -1.0em;
+    line-height: 1.6;
+    word-break: keep-all;
+    color: #555;
+}
 
 table {
     width: 100%;
@@ -185,7 +193,6 @@ th, td {
 def format_smart_text(text):
     if not text: return ""
     
-    # 1. 마크다운 스타일 표(|, ---)가 포함된 경우 처리 (기존 로직 유지)
     if "|" in text and "---" in text:
         return text.replace('\n', '  \n')
     
@@ -197,16 +204,14 @@ def format_smart_text(text):
         if not raw_line:
             continue
             
-        # 2. **텍스트** 를 <b>텍스트</b> 로 변환 (정규표현식)
+        # 굵게(**) 변환 로직
         processed_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', raw_line)
         
-        # 3. '>' 기호로 시작하는 경우 추가 들여쓰기 적용
+        # 들여쓰기(>) 변환 로직
         if processed_line.startswith('>'):
-            # '>' 기호를 제거하고 스타일 적용
             content = processed_line[1:].strip()
             html_output += f"<div class='text-indent-extra'>{content}</div>"
         else:
-            # 일반적인 동그라미 숫자 라인 스타일 적용
             html_output += f"<div class='text-line'>{processed_line}</div>"
             
     return html_output
@@ -223,7 +228,6 @@ def load_data():
         data = all_values[1:]
         df = pd.DataFrame(data, columns=headers)
         
-        # 열 매핑 (I:8, J:9, L:11, N:13)
         if len(headers) >= 9: df['개념이미지_I'] = df.iloc[:, 8]
         if len(headers) >= 10: 
             df['개념빈출_J'] = pd.to_numeric(df.iloc[:, 9].str.replace(r'[^0-9]', '', regex=True), errors='coerce').fillna(0).astype(int)
@@ -290,14 +294,12 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
 # 6. 필터 및 모드 설정
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
-# (수정됨) 라벨에서 (J열 기준) 텍스트 제거
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
 only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
 view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"])
 
 filtered_df = df.copy()
 
-# 필터 적용 로직
 if only_high_freq:
     filtered_df = filtered_df[filtered_df['개념빈출_J'] >= 3]
 
@@ -349,10 +351,8 @@ else:
                     year_info = str(q.get('출제년도', '')).strip() or str(q.get('문제빈도 출제년도', '')).strip()
                     year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
                     
-                    # (수정됨) 마침표 중복 방지 로직
                     q_num = str(q.get('숫문_L', '')).strip().replace(".0", "")
                     if q_num:
-                        # 시트 데이터에 이미 점이 있다면 그대로 쓰고, 없으면 하나만 붙여줌
                         q_num_display = f"{q_num} " if "." in q_num else f"{q_num}. "
                     else:
                         q_num_display = "Q. "
@@ -373,13 +373,12 @@ else:
                     """, unsafe_allow_html=True)
 
     # --------------------------------------------------
-    # 뷰 모드 실행 (수정된 버튼 배치 부분)
+    # 뷰 모드 실행
     # --------------------------------------------------
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
         if st.session_state.card_idx >= len(pk_list): st.session_state.card_idx = 0
 
-        
         pk = pk_list[st.session_state.card_idx]
         group = grouped.get_group(pk)
         row = group.iloc[0]
@@ -390,22 +389,16 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-       # --------------------------------------------------
-        # 3. 하단 네비게이션 (여백 최적화 및 중앙 정렬 버전)
-        # --------------------------------------------------
-        # 기존 30px에서 18px(60%)로 여백 높이 축소
         st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
         st.divider()
     
         current_idx = st.session_state.card_idx
         total_count = len(pk_list)
     
-        # 이전 버튼
         if st.button("이전", key="btn_prev", use_container_width=True, disabled=(current_idx == 0)):
             st.session_state.card_idx = max(0, current_idx - 1)
             st.rerun()
     
-        # 페이지 표시: 버튼 사이 간격을 줄이고 수직 중앙 정렬을 위해 line-height와 margin 조정
         st.markdown(
             f"""
             <div style='
@@ -422,7 +415,6 @@ else:
             unsafe_allow_html=True
         )
     
-        # 다음 버튼
         if st.button("다음", key="btn_next", use_container_width=True, disabled=(current_idx == total_count - 1)):
             st.session_state.card_idx = min(total_count - 1, current_idx + 1)
             st.rerun()
