@@ -63,7 +63,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (기존 스타일 유지 및 즐겨찾기 버튼 보완)
+# 2. 스타일 (회색 배경 박스 및 디자인 수정)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -137,7 +137,8 @@ st.markdown("""
     margin-bottom: 4px;        
 }
 
-/* 버튼 스타일: 하트 버튼을 위해 배경색 투명 옵션 추가 가능성 대비 */
+/* --- [수정됨] 하트 버튼 스타일: 회색 배경 박스 적용 --- */
+/* 기본 버튼 스타일 */
 .stButton button {
     width: 100%;
     padding: 0.6rem 0.5rem;
@@ -147,18 +148,23 @@ st.markdown("""
     transition: background-color 0.3s;
 }
 
-/* 하트 전용 버튼 스타일 (투명 배경) */
+/* 하트 전용 버튼 스타일 (타이틀 옆 좁은 컬럼 내 버튼) */
 div[data-testid="stHorizontalBlock"] .stButton button {
-    background-color: transparent !important;
-    border: none !important;
-    font-size: 24px !important;
-    padding: 0 !important;
-    margin-top: -5px;
+    background-color: #f0f2f6 !important; /* 연한 회색 배경 */
+    border: none !important;              /* 테두리 제거 */
+    border-radius: 8px !important;        /* 둥근 모서리 */
+    font-size: 20px !important;           /* 이모지 크기 */
+    height: 42px !important;              /* 높이 고정 */
+    padding: 0 !important;                /* 내부 여백 제거 */
+    margin-top: -2px;                     /* 위치 미세 조정 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none !important;
 }
 
 .stButton button:hover {
-    background-color: #e9ecef !important;
-    border-color: #ced4da !important;
+    background-color: #e2e6ea !important; /* 호버 시 약간 진해짐 */
 }
 
 .concept-img {
@@ -287,12 +293,55 @@ def load_data():
 
 df = load_data()
 
-# [추가] 즐겨찾기 상태 변경 함수
+# --------------------------------------------------
+# [핵심] 즐겨찾기 시트 연동 함수 (추가/삭제)
+# --------------------------------------------------
+def update_sheet_favorite(action, pk_val, user_id):
+    """
+    구글 시트에 즐겨찾기를 추가하거나 삭제합니다.
+    속도 개선을 위해 action에 따라 분기 처리합니다.
+    """
+    if not fav_sheet:
+        return
+
+    try:
+        pk_str = str(pk_val)
+        user_str = str(user_id).strip()
+
+        if action == "add":
+            # 추가는 append_row를 사용하여 빠르게 처리
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            fav_sheet.append_row([user_str, pk_str, timestamp])
+        
+        elif action == "remove":
+            # 삭제는 해당 셀을 찾아서 지워야 하므로 약간의 시간이 걸릴 수 있음
+            # 속도를 위해 전체 데이터를 다 가져오지 않고, 검색 시도
+            try:
+                # 1. 해당 PK를 가진 셀들을 찾음
+                cell_list = fav_sheet.findall(pk_str)
+                for cell in cell_list:
+                    # 2. 해당 행의 유저 ID가 일치하는지 확인 (col 1이 user_id라고 가정)
+                    if fav_sheet.cell(cell.row, 1).value == user_str:
+                        fav_sheet.delete_rows(cell.row)
+                        break # 하나 지웠으면 중단
+            except:
+                pass # 삭제 중 오류 시 무시 (UI는 이미 반영됨)
+
+    except Exception as e:
+        print(f"Sheet update error: {e}")
+
 def toggle_favorite(pk_val):
+    # 1. 세션 상태 즉시 업데이트 (UI 반응 속도 향상)
+    current_user = st.session_state.user_id
+    
     if pk_val in st.session_state.favorites:
         st.session_state.favorites.remove(pk_val)
+        # 백그라운드(?) 처럼 시트 삭제 요청
+        update_sheet_favorite("remove", pk_val, current_user)
     else:
         st.session_state.favorites.add(pk_val)
+        # 시트 추가 요청
+        update_sheet_favorite("add", pk_val, current_user)
 
 # --------------------------------------------------
 # 4. 사용자 인증
@@ -324,21 +373,25 @@ if not user_email:
 USER_ID = st.session_state.user_id
 
 # --------------------------------------------------
-# 5. 즐겨찾기 불러오기 및 '별표' 열 동기화
+# 5. 즐겨찾기 불러오기 (속도 개선: 최초 1회만 로딩)
 # --------------------------------------------------
-if "favorites" not in st.session_state or st.session_state.get('last_user') != USER_ID:
+# [수정] 매번 로딩하지 않고 세션에 없거나 유저가 바뀐 경우에만 로딩하도록 로직 강화
+if "favorites_loaded" not in st.session_state or st.session_state.get('last_user') != USER_ID:
     try:
+        # 최초 1회 전체 로딩
         records = fav_sheet.get_all_records()
         st.session_state.favorites = {str(r["PK"]) for r in records if str(r["user_id"]).strip() == USER_ID}
         
-        # [중요] 시트의 '별표' 열에 체크된 항목 자동 추가
+        # '별표' 열 동기화
         if "별표" in df.columns:
             star_pks = set(df[df['별표'].astype(str).str.strip() != ""]["PK"].unique())
             st.session_state.favorites.update(star_pks)
             
         st.session_state.last_user = USER_ID
+        st.session_state.favorites_loaded = True # 로딩 완료 플래그
     except: 
         st.session_state.favorites = set()
+        st.session_state.favorites_loaded = True
 
 # --------------------------------------------------
 # 6. 필터 및 모드 설정
@@ -387,12 +440,13 @@ else:
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
         clean_gubun = row.get('구분','').replace('\n', ' ')
 
-        # --- [변경] 타이틀 좌측에 하트 버튼 배치 ---
+        # --- [변경] 타이틀 좌측 하트 버튼 (디자인 개선됨) ---
         col_fav, col_tit = st.columns([0.06, 0.94])
         
         with col_fav:
             is_fav = pk_val in st.session_state.favorites
             heart_icon = "💛" if is_fav else "🤍"
+            # 버튼 클릭 시 toggle_favorite 호출 후 rerun
             if st.button(heart_icon, key=f"fav_{pk_val}"):
                 toggle_favorite(pk_val)
                 st.rerun()
