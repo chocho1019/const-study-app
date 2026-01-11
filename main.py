@@ -166,6 +166,12 @@ th, td {
     padding: 8px;
     border: 1px solid #ddd;
 }
+/* 버튼 레이아웃이 모바일에서 세로로 깨지는 것을 방지 */
+[data-testid="column"] {
+    width: calc(33.3333% - 1rem) !important;
+    flex: 1 1 calc(33.3333% - 1rem) !important;
+    min-width: calc(33.3333% - 1rem) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -359,18 +365,24 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-        # 버튼 배치 (다음 버튼 오른쪽 고정)
-        btn_cols = st.columns([1, 1, 1])
-        with btn_cols[0]:
+        # --- 이 부분을 교체하세요 ---
+        # 빈 공간 없이 3개의 컬럼을 생성하여 좌/중/우 배치
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
             if st.button("이전"):
                 st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
                 st.rerun()
-        with btn_cols[1]:
-            st.markdown(f"<p style='text-align:center; margin-top: 8px;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
-        with btn_cols[2]:
+        
+        with col2:
+            # 페이지 번호를 중앙 정렬하여 배치
+            st.markdown(f"<div style='text-align:center; padding-top:8px; font-size:14px; color:#666;'>{st.session_state.card_idx + 1} / {len(pk_list)}</div>", unsafe_allow_html=True)
+            
+        with col3:
             if st.button("다음"):
                 st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
                 st.rerun()
+        # --- 교체 끝 ---
     else:
         for pk, group in grouped:
             row = group.iloc[0]
