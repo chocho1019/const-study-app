@@ -157,10 +157,20 @@ st.markdown("""
     max-width: 100%;
 }
 
+/* 일반 텍스트 및 동그라미 숫자용 */
 .text-line {
-   margin-bottom: 4px;
+    margin-bottom: 4px;
     padding-left: 1.5em; 
     text-indent: -1.0em;
+    line-height: 1.6;
+    word-break: keep-all;
+}
+
+/* 하이픈(-) 시작 문장용: 첫 글자 열을 동그라미 숫자 라인과 맞춤 */
+.text-hyphen {
+    margin-bottom: 4px;
+    padding-left: 1.5em; 
+    text-indent: -0.6em;
     line-height: 1.6;
     word-break: keep-all;
 }
@@ -207,10 +217,14 @@ def format_smart_text(text):
         # 굵게(**) 변환 로직
         processed_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', raw_line)
         
-        # 들여쓰기(>) 변환 로직
+        # 1. 들여쓰기(>) 변환 로직
         if processed_line.startswith('>'):
             content = processed_line[1:].strip()
             html_output += f"<div class='text-indent-extra'>{content}</div>"
+        # 2. 하이픈(-) 정렬 로직 추가
+        elif processed_line.startswith('-'):
+            html_output += f"<div class='text-hyphen'>{processed_line}</div>"
+        # 3. 일반 라인 (동그라미 숫자 등)
         else:
             html_output += f"<div class='text-line'>{processed_line}</div>"
             
@@ -329,9 +343,12 @@ else:
         freq_val = str(row.get('개념빈출_J', '')).strip()
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
 
+        # [수정] 구분 내용 중 줄바꿈(\n)을 공백(' ')으로 교체하여 한 줄로 출력되게 함
+        clean_gubun = row.get('구분','').replace('\n', ' ')
+
         st.markdown(f"""
         <div class='title-row'>
-            <div class='concept-title-text'>{num_val}) {row.get('구분','')}</div>
+            <div class='concept-title-text'>{num_val}) {clean_gubun}</div>
             {badge_html}
         </div>
         """, unsafe_allow_html=True)
