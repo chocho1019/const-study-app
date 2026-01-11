@@ -1,3 +1,5 @@
+
+
 import streamlit as st
 import pandas as pd
 import uuid
@@ -63,7 +65,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (즐겨찾기 버튼 및 레이아웃 유지)
+# 2. 스타일 (기존 스타일 유지)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -95,24 +97,11 @@ st.markdown("""
     font-size: 13px;
     font-weight: 500;
     white-space: nowrap;        
-    display: inline-block;
-    vertical-align: middle;
 }
-/* 즐겨찾기 하트 버튼 전용 스타일 */
-.stButton > button {
-    border: none !important;
-    background-color: transparent !important;
-    padding: 0 !important;
-    font-size: 22px !important;
-    line-height: 1 !important;
-    box-shadow: none !important;
-    color: inherit !important;
+.section-gap {
+    height: 25px;
+    width: 100%;
 }
-.stButton > button:hover {
-    background-color: transparent !important;
-    color: #FFD700 !important; /* 호버 시 골드색 */
-}
-.section-gap { height: 25px; width: 100%; }
 .question-box {
     background-color: #f8f9fa;
     padding: 15px;
@@ -120,22 +109,74 @@ st.markdown("""
     margin-bottom: 12px;
     border: 1px solid #e0e0e0;
 }
-.q-year { color: #888; font-size: 12px; margin-bottom: 4px; }
-.q-text { font-weight: bold; color: #2E4053; margin-bottom: 8px; font-size: 15px; display: block; }
-.a-text { color: #444; font-size: 14px; line-height: 1.6; }
-.app-logo { font-size: 12px; font-weight: 300; color: #a8b3b4; text-align: right; margin-bottom: 0.5rem; }
-.concept-category { font-size: 14px; font-weight: 400; color: #7F8C8D; margin-bottom: 4px; }
+.q-year {
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 4px; 
+}
+.q-text {
+    font-weight: bold;
+    color: #2E4053;
+    margin-bottom: 8px;
+    font-size: 15px;
+    display: block; 
+}
+.a-text {
+    color: #444;
+    font-size: 14px;
+    line-height: 1.6; 
+}
+.app-logo {
+    font-size: 12px;            
+    font-weight: 300;            
+    color: #a8b3b4;             
+    text-align: right;
+    margin-bottom: 0.5rem;
+}
+.concept-category {
+    font-size: 14px;        
+    font-weight: 400;            
+    color: #7F8C8D;             
+    margin-bottom: 4px;        
+}
+/* 기존 스타일에서 이 부분을 찾아 교체하거나 덮어쓰세요 */
+.stButton button {
+    width: 100%;
+    padding: 0.6rem 0.5rem; /* 클릭하기 좋게 패딩을 살짝 늘렸습니다 */
+    background-color: #f1f3f5 !important; /* 연한 회색 배경 */
+    border: 1px solid #dee2e6 !important; /* 테두리도 연하게 설정 */
+    color: #495057 !important; /* 글자색 */
+    transition: background-color 0.3s;
+}
 
-/* 텍스트 정렬 스타일 */
-.text-line { margin-bottom: 4px; padding-left: 1.5em; text-indent: -1.0em; line-height: 1.6; word-break: keep-all; }
-.text-hyphen { margin-bottom: 4px; padding-left: 1.5em; text-indent: -0.6em; line-height: 1.6; word-break: keep-all; }
-.text-indent-extra { margin-bottom: 4px; padding-left: 2.5em; text-indent: -1.0em; line-height: 1.6; word-break: keep-all; color: #555; }
+.stButton button:hover {
+    background-color: #e9ecef !important; /* 마우스 올렸을 때 약간 더 진한 회색 */
+    border-color: #ced4da !important;
+}
 
-/* 테이블 최적화 */
-table { width: 100% !important; border-collapse: collapse !important; margin: 12px 0 !important; border-top: 2px solid #cbd5e0 !important; font-size: 0.9em !important; }
-th { background-color: #f7fafc !important; font-weight: bold !important; text-align: left !important; padding: 6px 10px !important; border-bottom: 2px solid #cbd5e0 !important; }
-td:first-child, th:first-child { white-space: nowrap !important; width: 1% !important; padding: 8px 15px 8px 10px !important; background-color: #f8f9fa !important; font-weight: bold !important; vertical-align: middle !important; border-right: 1px solid #e2e8f0 !important; }
-td { padding: 8px 10px !important; border: 1px solid #e2e8f0 !important; vertical-align: middle !important; line-height: 1.5 !important; color: #4a5568 !important; }
+.concept-img {
+    margin: 10px 0;
+    border-radius: 8px;
+    max-width: 100%;
+}
+
+.text-line {
+   margin-bottom: 4px;
+    /* 왼쪽 여백과 들여쓰기 값을 조절하여 동그라미 숫자와 글자 시작 열을 맞춤 */
+    padding-left: 1.5em; 
+    text-indent: -1.0em;
+    line-height: 1.6;
+    word-break: keep-all;
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+th, td {
+    padding: 8px;
+    border: 1px solid #ddd;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -144,20 +185,13 @@ td { padding: 8px 10px !important; border: 1px solid #e2e8f0 !important; vertica
 # --------------------------------------------------
 def format_smart_text(text):
     if not text: return ""
-    if "|" in text and "---" in text: return text.replace('\n', '  \n')
+    if "|" in text and "---" in text:
+        return text.replace('\n', '  \n')
     lines = text.split('\n')
     html_output = ""
     for line in lines:
-        raw_line = line.strip()
-        if not raw_line: continue
-        processed_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', raw_line)
-        if processed_line.startswith('>'):
-            content = processed_line[1:].strip()
-            html_output += f"<div class='text-indent-extra'>{content}</div>"
-        elif processed_line.startswith('-'):
-            html_output += f"<div class='text-hyphen'>{processed_line}</div>"
-        else:
-            html_output += f"<div class='text-line'>{processed_line}</div>"
+        if line.strip():
+            html_output += f"<div class='text-line'>{line.strip()}</div>"
     return html_output
 
 @st.cache_data(ttl=600)
@@ -167,15 +201,30 @@ def load_data():
         sheet = doc.worksheet("테스트용")
         all_values = sheet.get_all_values()
         if not all_values: return pd.DataFrame()
+        
         headers = all_values[0]
         data = all_values[1:]
         df = pd.DataFrame(data, columns=headers)
+        
+        # 열 매핑 (I:8, J:9, L:11, N:13)
+        if len(headers) >= 9: df['개념이미지_I'] = df.iloc[:, 8]
         if len(headers) >= 10: 
             df['개념빈출_J'] = pd.to_numeric(df.iloc[:, 9].str.replace(r'[^0-9]', '', regex=True), errors='coerce').fillna(0).astype(int)
+        if len(headers) >= 12: df['숫문_L'] = df.iloc[:, 11]
+        if len(headers) >= 14: df['문제이미지_N'] = df.iloc[:, 13]
+
         df = df.loc[:, ~df.columns.duplicated()]
         df.columns = df.columns.str.strip()
+        
+        if "fpk" in df.columns and "PK" in df.columns:
+            df["PK"] = df.apply(
+                lambda row: row["fpk"].strip() if (str(row["PK"]).strip() == "" or pd.isna(row["PK"])) and str(row.get("fpk", "")).strip() != "" 
+                else str(row["PK"]).strip(), axis=1
+            )
         return df
-    except: return pd.DataFrame()
+    except Exception as e:
+        st.error(f"데이터 로드 중 오류가 발생했습니다: {e}")
+        return pd.DataFrame()
 
 df = load_data()
 
@@ -193,19 +242,25 @@ user_email = st.session_state.get('user_id', "").strip()
 
 if not user_email:
     ALLOWED_EMAILS = get_allowed_emails()
-    if ALLOWED_EMAILS is None: st.error("⚠️ 연결 오류"); st.stop()
+    if ALLOWED_EMAILS is None:
+        st.error("⚠️ 구글 시트 연결 오류"); st.stop()
+        
+    st.info("👈 왼쪽 사이드바에서 이메일로 로그인하면 학습을 시작할 수 있습니다.")
+    
     st.sidebar.title("🔐 사용자 인증")
     input_email = st.sidebar.text_input("등록된 이메일을 입력하세요").strip()
     if st.sidebar.button("로그인"):
         if input_email in ALLOWED_EMAILS:
             st.session_state.user_id = input_email
             st.rerun()
+        else:
+            st.sidebar.error("등록되지 않은 이메일입니다.")
     st.stop()
 
 USER_ID = st.session_state.user_id
 
 # --------------------------------------------------
-# 5. 즐겨찾기 로직
+# 5. 즐겨찾기 불러오기
 # --------------------------------------------------
 if "favorites" not in st.session_state or st.session_state.get('last_user') != USER_ID:
     try:
@@ -214,116 +269,148 @@ if "favorites" not in st.session_state or st.session_state.get('last_user') != U
         st.session_state.last_user = USER_ID
     except: st.session_state.favorites = set()
 
-def toggle_fav(pk):
-    pk_str = str(pk)
-    if pk_str in st.session_state.favorites:
-        st.session_state.favorites.remove(pk_str)
-        try:
-            cells = fav_sheet.findall(USER_ID, in_column=1)
-            for cell in cells:
-                if str(fav_sheet.cell(cell.row, 2).value) == pk_str:
-                    fav_sheet.delete_rows(cell.row)
-                    break
-        except: pass
-    else:
-        st.session_state.favorites.add(pk_str)
-        try:
-            fav_sheet.append_row([USER_ID, pk_str, datetime.datetime.now().strftime("%Y-%m-%d")])
-        except: pass
-
 # --------------------------------------------------
-# 6. 필터 및 검색
+# 6. 필터 및 모드 설정
 # --------------------------------------------------
 st.sidebar.title("🔍 학습 필터")
-search_query = st.sidebar.text_input("개념 검색", placeholder="검색어를 입력하세요...").strip()
+# (수정됨) 라벨에서 (J열 기준) 텍스트 제거
 sort_by_freq = st.sidebar.checkbox("⭐ 빈출도 높은 순")
 only_high_freq = st.sidebar.checkbox("🔥 3번 이상 빈출만")
-view_mode = st.sidebar.radio("모드 선택", ["전체 학습", "🃏 암기카드", "💛 즐겨찾기만"])
+view_mode = st.sidebar.radio("모드 선택", ["💛 즐겨찾기만", "🃏 암기카드", "전체 학습"])
 
 filtered_df = df.copy()
-if search_query:
-    filtered_df = filtered_df[filtered_df['구분'].str.contains(search_query, case=False, na=False) | filtered_df['개념'].str.contains(search_query, case=False, na=False)]
-if only_high_freq: filtered_df = filtered_df[filtered_df['개념빈출_J'] >= 3]
-if sort_by_freq: filtered_df = filtered_df.sort_values(by='개념빈출_J', ascending=False)
+
+# 필터 적용 로직
+if only_high_freq:
+    filtered_df = filtered_df[filtered_df['개념빈출_J'] >= 3]
+
+if sort_by_freq:
+    filtered_df = filtered_df.sort_values(by='개념빈출_J', ascending=False)
+
+for col, label in [("과목", "과목"), ("대카테고리", "대카테고리"), ("소카테고리", "소카테고리")]:
+    if col in filtered_df.columns:
+        options = ["전체"] + list(filtered_df[col][filtered_df[col] != ""].unique())
+        sel = st.sidebar.selectbox(f"{label} 선택", options)
+        if sel != "전체": filtered_df = filtered_df[filtered_df[col] == sel]
 
 if view_mode == "💛 즐겨찾기만":
-    filtered_df = filtered_df[filtered_df["PK"].astype(str).isin(st.session_state.favorites)]
+    filtered_df = filtered_df[filtered_df["PK"].isin(st.session_state.favorites)]
 
 # --------------------------------------------------
 # 7. 렌더링 함수
 # --------------------------------------------------
 if filtered_df.empty:
-    st.info("조건에 맞는 개념이 없습니다.")
+    st.info("선택한 조건에 해당하는 개념이 없습니다.")
 else:
     grouped = filtered_df.groupby("PK", sort=False)
     pk_list = list(grouped.groups.keys())
 
     def render_concept_block(row, pk_val):
-        # 상단 헤더 레이아웃 (제목 영역 / 메타 정보 영역)
-        col_title, col_meta = st.columns([0.75, 0.25])
-        
-        with col_title:
-            num_val = str(row.get('숫구', '')).strip().replace(".0", "") or str(pk_val)
-            clean_gubun = row.get('구분','').replace('\n', ' ')
-            st.markdown(f"<div class='concept-title-text'>{num_val}) {clean_gubun}</div>", unsafe_allow_html=True)
-            
-        with col_meta:
-            # 빈출 배지와 하트 버튼을 한 줄에 나란히 배치 (배지가 넓으므로 2:1 비율)
-            meta_inner_1, meta_inner_2 = st.columns([2, 1])
-            
-            freq_val = str(row.get('개념빈출_J', '')).strip()
-            with meta_inner_1:
-                if freq_val != "0":
-                    st.markdown(f"<div class='freq-badge'>{freq_val}회</div>", unsafe_allow_html=True)
-                else:
-                    st.write("") # 빈 공간 유지
-            
-            with meta_inner_2:
-                is_fav = str(pk_val) in st.session_state.favorites
-                heart_icon = "💛" if is_fav else "🤍"
-                # 버튼 클릭 시 즉시 토글 후 리런
-                if st.button(heart_icon, key=f"btn_fav_{pk_val}_{row.name}"):
-                    toggle_fav(pk_val)
-                    st.rerun()
+        num_val = str(row.get('숫구', '')).strip().replace(".0", "") or pk_val
+        freq_val = str(row.get('개념빈출_J', '')).strip()
+        badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
 
-        st.markdown("<div style='height:8px; border-bottom:2px solid #eaeaea; margin-bottom:12px;'></div>", unsafe_allow_html=True)
-        st.markdown(format_smart_text(str(row.get('개념', ''))), unsafe_allow_html=True)
-        img_url = get_direct_url(row.get('개념이미지_I', ''))
-        if img_url: st.image(img_url, width=500)
+        st.markdown(f"""
+        <div class='title-row'>
+            <div class='concept-title-text'>{num_val}) {row.get('구분','')}</div>
+            {badge_html}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        concept_raw = str(row.get('개념', ''))
+        st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
+
+        concept_img_url = get_direct_url(row.get('개념이미지_I', ''))
+        if concept_img_url:
+            st.image(concept_img_url, use_container_width=False, width=500)
 
     def render_questions(valid_qs):
+        st.markdown("<div class='section-gap'></div>", unsafe_allow_html=True)
         if not valid_qs.empty:
             with st.expander(f"📝 관련 기출문제 ({len(valid_qs)}건)"):
                 for _, q in valid_qs.iterrows():
-                    year = str(q.get('출제년도', '')).strip()
-                    st.markdown(f"<div class='question-box'><div class='q-year'>[{year}]</div><div class='q-text'>{q.get('문제','')}</div><div class='a-text'>{format_smart_text(str(q.get('정답','')))}</div></div>", unsafe_allow_html=True)
+                    year_info = str(q.get('출제년도', '')).strip() or str(q.get('문제빈도 출제년도', '')).strip()
+                    year_html = f"<div class='q-year'>[{year_info}]</div>" if year_info else ""
+                    
+                    # (수정됨) 마침표 중복 방지 로직
+                    q_num = str(q.get('숫문_L', '')).strip().replace(".0", "")
+                    if q_num:
+                        # 시트 데이터에 이미 점이 있다면 그대로 쓰고, 없으면 하나만 붙여줌
+                        q_num_display = f"{q_num} " if "." in q_num else f"{q_num}. "
+                    else:
+                        q_num_display = "Q. "
+                    
+                    q_text = str(q.get('문제',''))
+                    a_text = str(q.get('정답',''))
+                    
+                    q_img_url = get_direct_url(q.get('문제이미지_N', ''))
+                    q_img_html = f"<img src='{q_img_url}' class='concept-img' width='400'>" if q_img_url else ""
 
-    # 모드별 실행 로직
+                    st.markdown(f"""
+                    <div class='question-box'>
+                        {year_html}
+                        <div class='q-text'>{q_num_display}{q_text}</div>
+                        <div style='text-align:center;'>{q_img_html}</div>
+                        <div class='a-text' style='margin-top:10px;'>{format_smart_text(a_text)}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    # --------------------------------------------------
+    # 뷰 모드 실행 (수정된 버튼 배치 부분)
+    # --------------------------------------------------
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
-        idx = st.session_state.card_idx % len(pk_list)
-        pk = pk_list[idx]
+        if st.session_state.card_idx >= len(pk_list): st.session_state.card_idx = 0
+
+        
+        pk = pk_list[st.session_state.card_idx]
         group = grouped.get_group(pk)
         row = group.iloc[0]
-        
         st.markdown(f"<div class='concept-category'>{row.get('과목','')} / {row.get('대카테고리','')}</div>", unsafe_allow_html=True)
-        with st.container(border=True): 
+        
+        with st.container(border=True):
             render_concept_block(row, pk)
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-        # 하단 네비게이션
-        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
-        nav1, nav2, nav3 = st.columns([1, 2, 1])
-        if nav1.button("⬅️ 이전", key="prev_card", use_container_width=True): 
-            st.session_state.card_idx -= 1
+       # --------------------------------------------------
+        # 3. 하단 네비게이션 (여백 최적화 및 중앙 정렬 버전)
+        # --------------------------------------------------
+        # 기존 30px에서 18px(60%)로 여백 높이 축소
+        st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
+        st.divider()
+    
+        current_idx = st.session_state.card_idx
+        total_count = len(pk_list)
+    
+        # 이전 버튼
+        if st.button("이전", key="btn_prev", use_container_width=True, disabled=(current_idx == 0)):
+            st.session_state.card_idx = max(0, current_idx - 1)
             st.rerun()
-        nav2.markdown(f"<div style='text-align:center; font-size:18px; font-weight:bold; padding-top:5px;'>{idx+1} / {len(pk_list)}</div>", unsafe_allow_html=True)
-        if nav3.button("다음 ➡️", key="next_card", use_container_width=True): 
-            st.session_state.card_idx += 1
+    
+        # 페이지 표시: 버튼 사이 간격을 줄이고 수직 중앙 정렬을 위해 line-height와 margin 조정
+        st.markdown(
+            f"""
+            <div style='
+                text-align: center; 
+                height: 40px; 
+                line-height: 40px; 
+                font-size: 16px; 
+                font-weight: bold; 
+                color: #666; 
+                margin: 2px 0;'>
+                {current_idx + 1} / {total_count}
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+    
+        # 다음 버튼
+        if st.button("다음", key="btn_next", use_container_width=True, disabled=(current_idx == total_count - 1)):
+            st.session_state.card_idx = min(total_count - 1, current_idx + 1)
             st.rerun()
-            
-    else: # 전체 학습 및 즐겨찾기만 모드
+        
+    else:
         for pk, group in grouped:
             row = group.iloc[0]
             with st.container():
