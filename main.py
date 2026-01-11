@@ -63,7 +63,7 @@ user_sheet, fav_sheet = get_working_sheets()
 st.set_page_config(page_title="2026 건축기사 필기 (초카이브)", layout="wide")
 
 # --------------------------------------------------
-# 2. 스타일 (회색 배경 박스 및 디자인 수정)
+# 2. 스타일 (정사각형 회색 버튼 적용)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -137,8 +137,7 @@ st.markdown("""
     margin-bottom: 4px;        
 }
 
-/* --- [수정됨] 하트 버튼 스타일: 회색 배경 박스 적용 --- */
-/* 기본 버튼 스타일 */
+/* --- [수정됨] 하트 버튼 스타일: 정사각형 회색 박스 --- */
 .stButton button {
     width: 100%;
     padding: 0.6rem 0.5rem;
@@ -148,15 +147,18 @@ st.markdown("""
     transition: background-color 0.3s;
 }
 
-/* 하트 전용 버튼 스타일 (타이틀 옆 좁은 컬럼 내 버튼) */
+/* 타이틀 옆 좁은 컬럼 내 버튼 (하트) */
 div[data-testid="stHorizontalBlock"] .stButton button {
-    background-color: #f0f2f6 !important; /* 연한 회색 배경 */
-    border: none !important;              /* 테두리 제거 */
-    border-radius: 8px !important;        /* 둥근 모서리 */
-    font-size: 20px !important;           /* 이모지 크기 */
-    height: 42px !important;              /* 높이 고정 */
-    padding: 0 !important;                /* 내부 여백 제거 */
-    margin-top: -2px;                     /* 위치 미세 조정 */
+    background-color: #f0f2f6 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 20px !important;
+    /* [핵심] 너비와 높이를 동일하게 강제하여 정사각형 생성 */
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    margin: 0 auto !important; /* 중앙 정렬 */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -164,7 +166,7 @@ div[data-testid="stHorizontalBlock"] .stButton button {
 }
 
 .stButton button:hover {
-    background-color: #e2e6ea !important; /* 호버 시 약간 진해짐 */
+    background-color: #e2e6ea !important;
 }
 
 .concept-img {
@@ -238,9 +240,9 @@ td {
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------
-# 3. 데이터 로드 및 Helper 함수
+# 3. 데이터 로드 및 Helper 함수 (성능 최적화 적용)
 # --------------------------------------------------
-def format_smart_text(text):
+def format_smart_text_logic(text):
     if not text: return ""
     if "|" in text and "---" in text:
         return text.replace('\n', '  \n')
@@ -286,6 +288,11 @@ def load_data():
                 lambda row: row["fpk"].strip() if (str(row["PK"]).strip() == "" or pd.isna(row["PK"])) and str(row.get("fpk", "")).strip() != "" 
                 else str(row["PK"]).strip(), axis=1
             )
+
+        # [속도 개선 1] 텍스트 처리를 로드 시점에 미리 수행하여 렌더링 부하 감소
+        df['HTML_개념'] = df['개념'].fillna("").apply(format_smart_text_logic)
+        df['HTML_정답'] = df['정답'].fillna("").apply(format_smart_text_logic)
+
         return df
     except Exception as e:
         st.error(f"데이터 로드 중 오류가 발생했습니다: {e}")
@@ -294,53 +301,34 @@ def load_data():
 df = load_data()
 
 # --------------------------------------------------
-# [핵심] 즐겨찾기 시트 연동 함수 (추가/삭제)
+# [핵심] 즐겨찾기 시트 연동 함수
 # --------------------------------------------------
 def update_sheet_favorite(action, pk_val, user_id):
-    """
-    구글 시트에 즐겨찾기를 추가하거나 삭제합니다.
-    속도 개선을 위해 action에 따라 분기 처리합니다.
-    """
-    if not fav_sheet:
-        return
-
+    if not fav_sheet: return
     try:
         pk_str = str(pk_val)
         user_str = str(user_id).strip()
-
         if action == "add":
-            # 추가는 append_row를 사용하여 빠르게 처리
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             fav_sheet.append_row([user_str, pk_str, timestamp])
-        
         elif action == "remove":
-            # 삭제는 해당 셀을 찾아서 지워야 하므로 약간의 시간이 걸릴 수 있음
-            # 속도를 위해 전체 데이터를 다 가져오지 않고, 검색 시도
             try:
-                # 1. 해당 PK를 가진 셀들을 찾음
                 cell_list = fav_sheet.findall(pk_str)
                 for cell in cell_list:
-                    # 2. 해당 행의 유저 ID가 일치하는지 확인 (col 1이 user_id라고 가정)
                     if fav_sheet.cell(cell.row, 1).value == user_str:
                         fav_sheet.delete_rows(cell.row)
-                        break # 하나 지웠으면 중단
-            except:
-                pass # 삭제 중 오류 시 무시 (UI는 이미 반영됨)
-
+                        break
+            except: pass
     except Exception as e:
         print(f"Sheet update error: {e}")
 
 def toggle_favorite(pk_val):
-    # 1. 세션 상태 즉시 업데이트 (UI 반응 속도 향상)
     current_user = st.session_state.user_id
-    
     if pk_val in st.session_state.favorites:
         st.session_state.favorites.remove(pk_val)
-        # 백그라운드(?) 처럼 시트 삭제 요청
         update_sheet_favorite("remove", pk_val, current_user)
     else:
         st.session_state.favorites.add(pk_val)
-        # 시트 추가 요청
         update_sheet_favorite("add", pk_val, current_user)
 
 # --------------------------------------------------
@@ -373,22 +361,17 @@ if not user_email:
 USER_ID = st.session_state.user_id
 
 # --------------------------------------------------
-# 5. 즐겨찾기 불러오기 (속도 개선: 최초 1회만 로딩)
+# 5. 즐겨찾기 로딩 (세션 캐싱)
 # --------------------------------------------------
-# [수정] 매번 로딩하지 않고 세션에 없거나 유저가 바뀐 경우에만 로딩하도록 로직 강화
 if "favorites_loaded" not in st.session_state or st.session_state.get('last_user') != USER_ID:
     try:
-        # 최초 1회 전체 로딩
         records = fav_sheet.get_all_records()
         st.session_state.favorites = {str(r["PK"]) for r in records if str(r["user_id"]).strip() == USER_ID}
-        
-        # '별표' 열 동기화
         if "별표" in df.columns:
             star_pks = set(df[df['별표'].astype(str).str.strip() != ""]["PK"].unique())
             st.session_state.favorites.update(star_pks)
-            
         st.session_state.last_user = USER_ID
-        st.session_state.favorites_loaded = True # 로딩 완료 플래그
+        st.session_state.favorites_loaded = True
     except: 
         st.session_state.favorites = set()
         st.session_state.favorites_loaded = True
@@ -440,13 +423,10 @@ else:
         badge_html = f"<div class='freq-badge'>{freq_val}회</div>" if freq_val != "0" else ""
         clean_gubun = row.get('구분','').replace('\n', ' ')
 
-        # --- [변경] 타이틀 좌측 하트 버튼 (디자인 개선됨) ---
         col_fav, col_tit = st.columns([0.06, 0.94])
-        
         with col_fav:
             is_fav = pk_val in st.session_state.favorites
             heart_icon = "💛" if is_fav else "🤍"
-            # 버튼 클릭 시 toggle_favorite 호출 후 rerun
             if st.button(heart_icon, key=f"fav_{pk_val}"):
                 toggle_favorite(pk_val)
                 st.rerun()
@@ -459,11 +439,10 @@ else:
             </div>
             """, unsafe_allow_html=True)
         
-        # 타이틀 하단 밑줄
         st.markdown("<div style='border-bottom: 2px solid #eaeaea; margin-bottom: 12px; margin-top: -5px;'></div>", unsafe_allow_html=True)
         
-        concept_raw = str(row.get('개념', ''))
-        st.markdown(format_smart_text(concept_raw), unsafe_allow_html=True)
+        # 미리 변환된 HTML 사용 (속도 향상)
+        st.markdown(row.get('HTML_개념', ''), unsafe_allow_html=True)
 
         concept_img_url = get_direct_url(row.get('개념이미지_I', ''))
         if concept_img_url:
@@ -479,7 +458,8 @@ else:
                     q_num = str(q.get('숫문_L', '')).strip().replace(".0", "")
                     q_num_display = f"{q_num} " if q_num and "." in q_num else f"{q_num}. " if q_num else "Q. "
                     q_text = str(q.get('문제',''))
-                    a_text = str(q.get('정답',''))
+                    # 미리 변환된 HTML 사용
+                    a_html = q.get('HTML_정답', '')
                     q_img_url = get_direct_url(q.get('문제이미지_N', ''))
                     q_img_html = f"<img src='{q_img_url}' class='concept-img' width='400'>" if q_img_url else ""
                     st.markdown(f"""
@@ -487,12 +467,12 @@ else:
                         {year_html}
                         <div class='q-text'>{q_num_display}{q_text}</div>
                         <div style='text-align:center;'>{q_img_html}</div>
-                        <div class='a-text' style='margin-top:10px;'>{format_smart_text(a_text)}</div>
+                        <div class='a-text' style='margin-top:10px;'>{a_html}</div>
                     </div>
                     """, unsafe_allow_html=True)
 
     # --------------------------------------------------
-    # 뷰 모드 실행
+    # 뷰 모드 실행 (속도 개선 2: 리스트 모드 페이지네이션)
     # --------------------------------------------------
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
@@ -515,8 +495,31 @@ else:
         if st.button("다음", key="btn_next", use_container_width=True, disabled=(current_idx == total_count - 1)):
             st.session_state.card_idx = min(total_count - 1, current_idx + 1)
             st.rerun()
+            
     else:
-        for pk, group in grouped:
+        # [속도 개선] 페이지네이션 적용 (한 번에 20개씩만 렌더링)
+        st.markdown("---")
+        
+        items_per_page = 20
+        total_items = len(pk_list)
+        
+        # 페이지 수가 1보다 클 때만 페이지네이션 컨트롤 표시 (사이드바)
+        if total_items > items_per_page:
+            total_pages = (total_items - 1) // items_per_page + 1
+            st.sidebar.markdown("---")
+            st.sidebar.markdown("### 📄 페이지 이동")
+            current_page = st.sidebar.number_input("페이지 번호", min_value=1, max_value=total_pages, value=1, step=1)
+            st.sidebar.write(f"총 {total_pages} 페이지 중 {current_page} 페이지")
+            
+            start_idx = (current_page - 1) * items_per_page
+            end_idx = start_idx + items_per_page
+            current_batch_pks = pk_list[start_idx:end_idx]
+        else:
+            current_batch_pks = pk_list
+
+        # 잘라낸 데이터만 렌더링
+        for pk in current_batch_pks:
+            group = grouped.get_group(pk)
             row = group.iloc[0]
             with st.container():
                 render_concept_block(row, pk)
