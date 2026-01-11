@@ -138,7 +138,6 @@ st.markdown("""
     color: #7F8C8D;             
     margin-bottom: 4px;        
 }
-
 .stButton button {
     width: 100%;
     padding: 0.25rem 0.5rem;
@@ -168,54 +167,6 @@ th, td {
     padding: 8px;
     border: 1px solid #ddd;
 }
-/* 모바일 전용: 이전/다음 버튼 가로 고정 */
-@media (max-width: 768px) {
-    div[data-testid="column"] {
-        min-width: 0 !important;
-    }
-
-    .nav-btn-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .nav-btn {
-        flex: 1;
-    }
-
-    .nav-center {
-        flex: 1;
-        text-align: center;
-        font-size: 14px;
-        color: #555;
-    }
-    /* 모바일 전용: 이전/다음 버튼 가로 고정 */
-@media (max-width: 768px) {
-    div[data-testid="column"] {
-        min-width: 0 !important;
-    }
-
-    .nav-btn-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .nav-btn {
-        flex: 1;
-    }
-
-    .nav-center {
-        flex: 1;
-        text-align: center;
-        font-size: 14px;
-        color: #555;
-    }
-}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -409,28 +360,23 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-           st.markdown("<div class='nav-btn-row'>", unsafe_allow_html=True)
-
-    col_prev, col_center, col_next = st.columns([1, 1, 1])
-
-    with col_prev:
-        st.markdown("<div class='nav-btn'>", unsafe_allow_html=True)
+        # --------------------------------------------------
+        # 버튼 배치 수정: 이전/다음 버튼을 각각 풀사이즈로 배치
+        # --------------------------------------------------
+        st.write("") # 간격 확보
+        
+        # 1. 다음 버튼 (가장 많이 사용하므로 상단에 크게 배치)
+        if st.button("다음"):
+            st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
+            st.rerun()
+            
+        # 2. 페이지 표시 (중앙)
+        st.markdown(f"<p style='text-align:center; margin: 10px 0; color: #888;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
+        
+        # 3. 이전 버튼
         if st.button("이전"):
             st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col_center:
-        st.markdown(
-            f"<div class='nav-center'>{st.session_state.card_idx + 1} / {len(pk_list)}</div>",
-            unsafe_allow_html=True
-        )
-
-    with col_next:
-        st.markdown("<div class='nav-btn'>", unsafe_allow_html=True)
-        if st.button("다음"):
-            st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.car
-
     else:
         for pk, group in grouped:
             row = group.iloc[0]
