@@ -184,13 +184,31 @@ th, td {
 # --------------------------------------------------
 def format_smart_text(text):
     if not text: return ""
+    
+    # 1. 마크다운 스타일 표(|, ---)가 포함된 경우 처리 (기존 로직 유지)
     if "|" in text and "---" in text:
         return text.replace('\n', '  \n')
+    
     lines = text.split('\n')
     html_output = ""
+    
     for line in lines:
-        if line.strip():
-            html_output += f"<div class='text-line'>{line.strip()}</div>"
+        raw_line = line.strip()
+        if not raw_line:
+            continue
+            
+        # 2. **텍스트** 를 <b>텍스트</b> 로 변환 (정규표현식)
+        processed_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', raw_line)
+        
+        # 3. '>' 기호로 시작하는 경우 추가 들여쓰기 적용
+        if processed_line.startswith('>'):
+            # '>' 기호를 제거하고 스타일 적용
+            content = processed_line[1:].strip()
+            html_output += f"<div class='text-indent-extra'>{content}</div>"
+        else:
+            # 일반적인 동그라미 숫자 라인 스타일 적용
+            html_output += f"<div class='text-line'>{processed_line}</div>"
+            
     return html_output
 
 @st.cache_data(ttl=600)
