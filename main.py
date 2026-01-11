@@ -1,5 +1,4 @@
 
-
 import streamlit as st
 import pandas as pd
 import uuid
@@ -8,52 +7,24 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # --------------------------------------------------
-# 추가: 이미지 URL 변환 함수 (기존 코드에 없어서 추가했습니다)
-# --------------------------------------------------
-def get_direct_url(url):
-    if "drive.google.com" in url:
-        file_id = ""
-        # URL에서 ID 추출 (다양한 형식 대응)
-        if "id=" in url:
-            file_id = url.split("id=")[1].split("&")[0]
-        elif "file/d/" in url:
-            file_id = url.split("file/d/")[1].split("/")[0]
-        
-        if file_id:
-            # uc 방식 대신 더 안정적인 thumbnail 방식으로 변환 (sz=w1000은 해상도 설정)
-            return f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
-    return url
-    
-# --------------------------------------------------
-# Google Sheet 연결 (연결 안정화 버전)
+# Google Sheet 연결
 # --------------------------------------------------
 SCOPE = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
 
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=SCOPE
+)
+
+gc = gspread.authorize(creds)
+
 SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
+sheet = gc.open_by_key(SPREADSHEET_ID)
 
-@st.cache_resource
-def get_gspread_client():
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=SCOPE
-    )
-    return gspread.authorize(creds)
-
-# 전역 변수로 설정
-gc = get_gspread_client()
-
-@st.cache_resource
-def get_working_sheets():
-    try:
-        doc = gc.open_by_key(SPREADSHEET_ID)
-        return doc.worksheet("users"), doc.worksheet("favorites")
-    except Exception as e:
-        return None, None
-
-user_sheet, fav_sheet = get_working_sheets()
+fav_sheet = sheet.worksheet("favorites")
 
 
 # --------------------------------------------------
@@ -146,13 +117,11 @@ hr { margin: 1.5rem 0; }
 # --------------------------------------------------
 # 3. 데이터 로드
 # --------------------------------------------------
-
 @st.cache_data
 def load_sheet(csv_url):
     df = pd.read_csv(csv_url)
     df.columns = df.columns.str.strip()
     df["PK"] = df["PK"].astype(str).str.strip()
-
     return df
 
 CONCEPT_URL = "https://docs.google.com/spreadsheets/d/1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g/gviz/tq?tqx=out:csv&gid=775019664"
@@ -164,32 +133,23 @@ df_question = load_sheet(QUESTION_URL)
 df = df_concept.merge(df_question, on="PK", how="left")
 
 # --------------------------------------------------
-# 4. 초기 사용자 인증 처리 (개선된 버전)
+# 4. 초기 사용자 인증 처리 (데이터 접근 제어)
 # --------------------------------------------------
-@st.cache_data(ttl=600)
-def get_allowed_emails():
-    try:
-        # 위에서 정의한 user_sheet를 직접 사용합니다.
-        if user_sheet:
-            return [e.strip() for e in user_sheet.col_values(1)[1:] if e.strip()]
-        return None
-    except Exception as e:
-        return None
-    
+# 'users' 시트에서 허용된 이메일 목록 가져오기
+try:
+    user_sheet = sheet.worksheet("users")
+    ALLOWED_EMAILS = [e.strip() for e in user_sheet.col_values(1)[1:] if e.strip()]
+except Exception as e:
+    st.error("구글 시트에 'users' 탭이 없거나 설정을 확인해주세요.")
+    st.stop()
 
-# 세션에 이미 사용자 ID가 있다면 허용 목록 확인을 건너뜁니다.
+# 세션에 저장된 이메일 확인
 user_email = st.session_state.get('user_id', "").strip()
 
-if not user_email:
-    ALLOWED_EMAILS = get_allowed_emails()
-    
-    if ALLOWED_EMAILS is None:
-        st.error("⚠️ 구글 시트 연결 오류: 'users' 탭을 찾을 수 없거나 권한이 없습니다.")
-        st.stop()
-        
+# 만약 로그인이 안 되어 있다면 로그인 창만 보여주고 중단
+if not user_email or user_email not in ALLOWED_EMAILS:
     st.sidebar.title("🔐 사용자 인증")
     input_email = st.sidebar.text_input("등록된 이메일을 입력하세요", key="login_input").strip()
-    
     if st.sidebar.button("로그인"):
         if input_email in ALLOWED_EMAILS:
             st.session_state.user_id = input_email
@@ -199,7 +159,6 @@ if not user_email:
     st.info("👈 왼쪽 사이드바에서 이메일로 로그인하면 학습을 시작할 수 있습니다.")
     st.stop()
 
-# 로그인 성공 후 변수 설정
 USER_ID = st.session_state.user_id
 
 
@@ -299,32 +258,22 @@ elif view_mode == "🃏 암기카드":
     cat_text = f"{row.get('과목','')} / {row.get('대카테고리','')} / {row.get('소카테고리','')}"
     st.markdown(f"<div class='concept-category'>{cat_text}</div>", unsafe_allow_html=True)
 
-
-    # 2. 즐겨찾기 버튼 (API 부하 감소 버전)
+    # 2. 즐겨찾기 버튼
     col_h, _ = st.columns([0.1, 0.9])
     with col_h:
-        if st.button("💛" if is_fav else "🤍", key=f"some_unique_key_{pk}"):
+        if st.button("💛" if is_fav else "🤍", key=f"card_fav_{pk}"):
             now = datetime.datetime.now().isoformat()
-            try:
-                if is_fav:
-                    st.session_state.favorites.remove(pk) # 화면에서 먼저 지우기
-                    # 시트 삭제는 에러가 나더라도 앱이 멈추지 않게 처리
-                    try:
-                        cells = fav_sheet.findall(pk)
-                        for c in cells:
-                            if fav_sheet.cell(c.row, 1).value == USER_ID:
-                                fav_sheet.delete_rows(c.row)
-                                break
-                    except:
-                        pass 
-                else:
-                    st.session_state.favorites.add(pk) # 화면에 먼저 표시
-                    fav_sheet.append_row([USER_ID, pk, now])
-                st.rerun()
-            except Exception as e:
-                st.error("구글 시트 응답이 지연되고 있습니다. 잠시 후 시도해주세요.")
-
-    
+            if is_fav:
+                cells = fav_sheet.findall(pk)
+                for c in cells:
+                    if fav_sheet.cell(c.row, 1).value == USER_ID:
+                        fav_sheet.delete_rows(c.row)
+                        break
+                st.session_state.favorites.remove(pk)
+            else:
+                fav_sheet.append_row([USER_ID, pk, now])
+                st.session_state.favorites.add(pk)
+            st.rerun()
 
     # 3. 개념 박스 (글머리 기호 및 줄 간격 수정 적용)
     title_text = row.get('개념','제목 없음')
@@ -347,16 +296,7 @@ elif view_mode == "🃏 암기카드":
     </div>
     """
     st.markdown(card_html, unsafe_allow_html=True)
-
-    # --- [여기에 추가] 암기카드 전용 이미지 출력 영역 ---
-    img_val_card = row.get("이미지URL")
-    if pd.notna(img_val_card) and str(img_val_card).strip() not in ["", "0", "0.0", "nan", "None"]:
-        target_url_card = str(img_val_card).strip()
-        if target_url_card.startswith("http"):
-            final_img_url_card = get_direct_url(target_url_card)
-            # 카드 아래에 이미지를 표시합니다.
-            st.image(final_img_url_card, use_container_width=True)
-            
+    
     # 4. 하단 네비게이션 버튼
     st.write("") 
     col_l, col_c, col_r = st.columns([1, 1, 1])
@@ -381,32 +321,25 @@ else:
         row = group.iloc[0]
         is_fav = pk in st.session_state.favorites
 
-        
-
         col_heart, col_title = st.columns([0.05, 0.95])
         with col_heart:
             if st.button("💛" if is_fav else "🤍", key=f"fav_list_{pk}"):
                 now = datetime.datetime.now().isoformat()
-                try:
-                    if is_fav:
-                        st.session_state.favorites.remove(pk)
-                        cells = fav_sheet.findall(str(pk))
-                        for c in cells:
-                            if fav_sheet.cell(c.row, 1).value == USER_ID:
-                                fav_sheet.delete_rows(c.row)
-                                break
-                    else:
-                        st.session_state.favorites.add(pk)
-                        fav_sheet.append_row([USER_ID, pk, now])
-                except:
-                    pass # 연속 클릭 시 발생하는 API 에러 무시
+                if is_fav:
+                    cells = fav_sheet.findall(str(pk))
+                    for c in cells:
+                        if fav_sheet.cell(c.row, 1).value == USER_ID:
+                            fav_sheet.delete_rows(c.row)
+                            break
+                    st.session_state.favorites.remove(pk)
+                else:
+                    fav_sheet.append_row([USER_ID, pk, now])
+                    st.session_state.favorites.add(pk)
                 st.rerun()
-        
 
         with col_title:
             st.markdown(f"<div class='concept-title'>{row.get('개념','제목 없음')}</div>", unsafe_allow_html=True)
 
-        
         # --- 개념 내용 출력 (글머리 기호 및 줄 간격 수정) ---
         if pd.notna(row.get("내용")):
             content_raw = str(row["내용"])
@@ -421,25 +354,10 @@ else:
             st.markdown(html_content, unsafe_allow_html=True)
 
 
-     # --- 이미지 출력 영역 (초기화 후 재작성) ---
-        img_val = row.get("이미지URL")
-        
-        # 1. 실제 데이터가 있는지 체크 (0, nan, 빈문자열 모두 제외)
-        if pd.notna(img_val) and str(img_val).strip() not in ["", "0", "0.0", "nan", "None"]:
-            target_url = str(img_val).strip()
-            
-            if target_url.startswith("http"):
-                final_img_url = get_direct_url(target_url)
-                # st.write(f"디버깅용 URL: {final_img_url}") # 이미지 안 나오면 이 주석을 해제해서 링크 확인
-                st.image(final_img_url, use_container_width=True)
-            else:
-                # URL이 아닌 텍스트(예: 0)가 들어있을 경우 아무것도 하지 않음
-                pass
-
-
         # --- 📝 기출문제 영역 --- 
         has_question = group['기출문제(질문)'].notna().any()
         if has_question:
+            # 이 줄을 추가하여 개념 내용과 기출문제 토글 사이 간격을 띄웁니다.
             st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
             with st.expander(f"📝 관련 기출문제 ({len(group)}건)"):
                 for _, q_row in group.iterrows():
@@ -448,51 +366,24 @@ else:
                         year_style = f"<span style='color: #888888; font-size: 0.75em; font-weight: bold;'>[{year} 출제]</span>"
                         question_text = f"<div style='margin-top: 5px; font-weight: bold; color: #004085;'>Q. {q_row['기출문제(질문)']}</div>"
                         
-                        # --- [수정] 보기 자동 번호 매기기 로직 ---
                         options_text = ""
                         if pd.notna(q_row.get("기출문제(보기)")):
-                            raw_options = str(q_row['기출문제(보기)']).split('\n')
-                            # 공백 라인 제외하고 실제 텍스트가 있는 줄만 처리
-                            valid_options = [opt.strip() for opt in raw_options if opt.strip()]
-                            
-                            circ_nums = ["①", "②", "③", "④", "⑤"]
-                            options_html_list = []
-                            for idx, opt in enumerate(valid_options):
-                                if idx < len(circ_nums):
-                                    options_html_list.append(f"<div style='margin-bottom: 3px;'>{circ_nums[idx]} {opt}</div>")
-                                else:
-                                    options_html_list.append(f"<div style='margin-bottom: 3px;'>- {opt}</div>")
-                            
-                            options_content = "".join(options_html_list)
-                            options_text = f"<div style='margin-top: 10px; color: #333; font-size: 0.95em; padding-left: 5px;'>{options_content}</div>"
-
-
+                            options_content = str(q_row['기출문제(보기)']).replace("\n", "<br>")
+                            options_text = f"<div style='margin-top: 5px; color: #333; font-size: 0.95em;'>{options_content}</div>"
                         
-                        # --- [정답 처리 로직 정리] ---
-                        ans_display = ""
+                        answer_html = ""
                         if pd.notna(q_row.get("정답")):
-                            try:
-                                # 소수점 제거 (3.0 -> 3)
-                                ans_val = int(float(q_row['정답']))
-                            except:
-                                ans_val = q_row['정답']
-                            
-                            # 깔끔한 텍스트 형식으로 생성
-                            ans_display = f"<div style='margin-top: 15px; color: #333; font-size: 0.85em; font-weight: light;'> * 정답 : {ans_val}번</div>"
+                            answer_html = f"<div style='margin-top: 8px; color: #155724; background-color: #d4edda; padding: 5px 10px; border-radius: 4px; font-size: 0.9em;'>✅ 정답: {q_row['정답']}</div>"
 
-                        # 전체 문제 박스 구성 (태그가 깨지지 않게 변수를 미리 조립)
                         full_html = f"""
-                        <div style="background-color: #f1f8ff; padding: 18px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cce5ff; line-height: 1.5;">
+                        <div style="background-color: #f1f8ff; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #cce5ff;">
                             {year_style}
                             {question_text}
                             {options_text}
-                            {ans_display}
+                            {answer_html}
                         </div>
                         """
-                        # 최종 출력
                         st.markdown(full_html, unsafe_allow_html=True)
-
-                        
         st.divider()
 
 # --------------------------------------------------
