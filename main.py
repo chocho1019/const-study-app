@@ -1,5 +1,4 @@
 
-
 import streamlit as st
 import pandas as pd
 import uuid
@@ -139,20 +138,11 @@ st.markdown("""
     color: #7F8C8D;             
     margin-bottom: 4px;        
 }
-/* 기존 스타일에서 이 부분을 찾아 교체하거나 덮어쓰세요 */
 .stButton button {
     width: 100%;
-    padding: 0.6rem 0.5rem; /* 클릭하기 좋게 패딩을 살짝 늘렸습니다 */
-    background-color: #f1f3f5 !important; /* 연한 회색 배경 */
-    border: 1px solid #dee2e6 !important; /* 테두리도 연하게 설정 */
-    color: #495057 !important; /* 글자색 */
-    transition: background-color 0.3s;
+    padding: 0.25rem 0.5rem;
 }
-
-.stButton button:hover {
-    background-color: #e9ecef !important; /* 마우스 올렸을 때 약간 더 진한 회색 */
-    border-color: #ced4da !important;
-}
+hr { margin: 1.5rem 0; }
 
 .concept-img {
     margin: 10px 0;
@@ -161,12 +151,12 @@ st.markdown("""
 }
 
 .text-line {
-   margin-bottom: 4px;
-    /* 왼쪽 여백과 들여쓰기 값을 조절하여 동그라미 숫자와 글자 시작 열을 맞춤 */
-    padding-left: 1.5em; 
-    text-indent: -1.0em;
+    margin-bottom: 4px;
+    padding-left: 22px;
+    text-indent: -22px;
     line-height: 1.6;
     word-break: keep-all;
+}
 
 table {
     width: 100%;
@@ -355,13 +345,10 @@ else:
                     </div>
                     """, unsafe_allow_html=True)
 
-    # --------------------------------------------------
-    # 뷰 모드 실행 (수정된 버튼 배치 부분)
-    # --------------------------------------------------
+    # 뷰 모드 실행
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
         if st.session_state.card_idx >= len(pk_list): st.session_state.card_idx = 0
-
         
         pk = pk_list[st.session_state.card_idx]
         group = grouped.get_group(pk)
@@ -373,43 +360,18 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-       # --------------------------------------------------
-        # 3. 하단 네비게이션 (여백 최적화 및 중앙 정렬 버전)
-        # --------------------------------------------------
-        # 기존 30px에서 18px(60%)로 여백 높이 축소
-        st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
-        st.divider()
-    
-        current_idx = st.session_state.card_idx
-        total_count = len(pk_list)
-    
-        # 이전 버튼
-        if st.button("이전", key="btn_prev", use_container_width=True, disabled=(current_idx == 0)):
-            st.session_state.card_idx = max(0, current_idx - 1)
-            st.rerun()
-    
-        # 페이지 표시: 버튼 사이 간격을 줄이고 수직 중앙 정렬을 위해 line-height와 margin 조정
-        st.markdown(
-            f"""
-            <div style='
-                text-align: center; 
-                height: 40px; 
-                line-height: 40px; 
-                font-size: 16px; 
-                font-weight: bold; 
-                color: #666; 
-                margin: 2px 0;'>
-                {current_idx + 1} / {total_count}
-            </div>
-            """, 
-            unsafe_allow_html=True
-        )
-    
-        # 다음 버튼
-        if st.button("다음", key="btn_next", use_container_width=True, disabled=(current_idx == total_count - 1)):
-            st.session_state.card_idx = min(total_count - 1, current_idx + 1)
-            st.rerun()
-        
+        # 버튼 배치 (다음 버튼 오른쪽 고정)
+        btn_cols = st.columns([1, 1, 1])
+        with btn_cols[0]:
+            if st.button("이전"):
+                st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
+                st.rerun()
+        with btn_cols[1]:
+            st.markdown(f"<p style='text-align:center; margin-top: 8px;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
+        with btn_cols[2]:
+            if st.button("다음"):
+                st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
+                st.rerun()
     else:
         for pk, group in grouped:
             row = group.iloc[0]
