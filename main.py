@@ -372,30 +372,39 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
+       # --------------------------------------------------
+        # 3. 하단 네비게이션 (여백 최적화 및 중앙 정렬 버전)
         # --------------------------------------------------
-        # 3. 하단 네비게이션 (무조건 전체 너비 사용)
-        # --------------------------------------------------
-        st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+        # 기존 30px에서 18px(60%)로 여백 높이 축소
+        st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
         st.divider()
     
-        # 현재 인덱스 및 전체 개수 계산
         current_idx = st.session_state.card_idx
         total_count = len(pk_list)
     
-        # 이전 버튼: use_container_width=True를 사용하여 강제로 가로 꽉 채움
+        # 이전 버튼
         if st.button("이전", key="btn_prev", use_container_width=True, disabled=(current_idx == 0)):
             st.session_state.card_idx = max(0, current_idx - 1)
             st.rerun()
     
-        # 페이지 표시: 중앙 정렬 및 여백 조절
+        # 페이지 표시: 버튼 사이 간격을 줄이고 수직 중앙 정렬을 위해 line-height와 margin 조정
         st.markdown(
-            f"<div style='text-align: center; padding: 10px 0; font-size: 16px; font-weight: bold; color: #666;'>"
-            f"{current_idx + 1} / {total_count}"
-            f"</div>", 
+            f"""
+            <div style='
+                text-align: center; 
+                height: 40px; 
+                line-height: 40px; 
+                font-size: 16px; 
+                font-weight: bold; 
+                color: #666; 
+                margin: 2px 0;'>
+                {current_idx + 1} / {total_count}
+            </div>
+            """, 
             unsafe_allow_html=True
         )
     
-        # 다음 버튼: use_container_width=True를 사용하여 강제로 가로 꽉 채움
+        # 다음 버튼
         if st.button("다음", key="btn_next", use_container_width=True, disabled=(current_idx == total_count - 1)):
             st.session_state.card_idx = min(total_count - 1, current_idx + 1)
             st.rerun()
