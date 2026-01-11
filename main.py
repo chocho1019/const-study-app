@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import uuid
@@ -137,9 +138,10 @@ st.markdown("""
     color: #7F8C8D;             
     margin-bottom: 4px;        
 }
+/* 버튼 기본 스타일 수정: 가로를 꽉 채우도록 설정 */
 .stButton button {
-    width: 100%;
-    padding: 0.25rem 0.5rem;
+    width: 100% !important;
+    padding: 0.6rem 0.5rem !important; /* 클릭 영역 확대를 위해 패딩 증가 */
 }
 hr { margin: 1.5rem 0; }
 
@@ -165,12 +167,6 @@ table {
 th, td {
     padding: 8px;
     border: 1px solid #ddd;
-}
-/* 버튼 레이아웃이 모바일에서 세로로 깨지는 것을 방지 */
-[data-testid="column"] {
-    width: calc(33.3333% - 1rem) !important;
-    flex: 1 1 calc(33.3333% - 1rem) !important;
-    min-width: calc(33.3333% - 1rem) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -365,24 +361,23 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-        # --- 이 부분을 교체하세요 ---
-        # 빈 공간 없이 3개의 컬럼을 생성하여 좌/중/우 배치
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
+        # --- [수정된 버튼 레이아웃 영역] ---
+        # 1. 이전 버튼과 페이지 번호를 상단에 나란히 배치
+        sub_cols = st.columns([1, 2])
+        with sub_cols[0]:
             if st.button("이전"):
                 st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
                 st.rerun()
+        with sub_cols[1]:
+            st.markdown(f"<p style='text-align:right; margin-top: 8px; font-size: 14px; color: #888;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
         
-        with col2:
-            # 페이지 번호를 중앙 정렬하여 배치
-            st.markdown(f"<div style='text-align:center; padding-top:8px; font-size:14px; color:#666;'>{st.session_state.card_idx + 1} / {len(pk_list)}</div>", unsafe_allow_html=True)
-            
-        with col3:
-            if st.button("다음"):
-                st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
-                st.rerun()
-        # --- 교체 끝 ---
+        # 2. 다음 버튼을 아래에 단독으로 배치 (CSS에 의해 가로 전체를 꽉 채움)
+        if st.button("다음"):
+            st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
+            st.rerun()
+        # --- [수정 끝] ---
+        
+
     else:
         for pk, group in grouped:
             row = group.iloc[0]
