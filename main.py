@@ -138,41 +138,11 @@ st.markdown("""
     color: #7F8C8D;             
     margin-bottom: 4px;        
 }
-/* 1. 버튼 기본 공통 스타일 */
 .stButton button {
     width: 100%;
-    border-radius: 8px;
+    padding: 0.25rem 0.5rem;
 }
-
-/* 2. '다음' 버튼 전용 스타일: 화면 꽉 차게 & 강조 */
-div.next-btn p {
-    display: none; /* 레이블 숨김 방지용 */
-}
-
-div.next-btn button {
-    width: 100% !important;
-    height: 3.5rem !important; /* 높이를 키워 클릭하기 편하게 */
-    background-color: #2E4053 !important; /* 버튼 색상 강조 */
-    color: white !important;
-    font-size: 18px !important;
-    font-weight: bold !important;
-    margin-top: 10px !important;
-}
-
-/* 3. '이전' 버튼 전용 스타일 */
-div.prev-btn button {
-    background-color: #f8f9fa !important;
-    color: #555 !important;
-    border: 1px solid #ddd !important;
-}
-
-/* 4. 페이지 표시 텍스트 */
-.page-info {
-    text-align: right;
-    font-size: 14px;
-    color: #888;
-    margin-top: 10px;
-}
+hr { margin: 1.5rem 0; }
 
 .concept-img {
     margin: 10px 0;
@@ -196,6 +166,15 @@ table {
 th, td {
     padding: 8px;
     border: 1px solid #ddd;
+}
+/* 버튼 컨테이너 정렬 추가 */
+[data-testid="stHorizontalBlock"] {
+    align-items: center;
+}
+
+/* 모바일에서 버튼이 꽉 차게 보이도록 하되, 다음 버튼은 우측 정렬 */
+.stButton button {
+    width: 100%;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -390,31 +369,28 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-        # --- 이 부분을 아래 코드로 완전히 교체하세요 ---
+        # --------------------------------------------------
+        # 버튼 배치 (다음 버튼 우측 끝 고정 및 모바일 최적화)
+        # --------------------------------------------------
+        st.write("") # 버튼 위쪽 간격 확보
         
-        # 1. 이전 버튼과 페이지 번호를 상단에 나란히 배치
-        col_prev, col_page = st.columns([1, 1])
-        with col_prev:
-            st.markdown('<div class="prev-btn">', unsafe_allow_html=True)
+        # 비율을 [1, 2, 1]로 조정하여 중앙 공간을 넓히고 버튼을 양 끝으로 배치
+        btn_cols = st.columns([1, 2, 1]) 
+        
+        with btn_cols[0]:
             if st.button("이전"):
                 st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+                
+        with btn_cols[1]:
+            # 페이지 번호를 중앙에 정렬
+            st.markdown(f"<p style='text-align:center; font-size:16px; margin-top:8px; color:#666;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
             
-        with col_page:
-            # 숫자를 오른쪽 정렬하여 배치
-            st.markdown(f"<div class='page-info'>{st.session_state.card_idx + 1} / {len(pk_list)}</div>", unsafe_allow_html=True)
-        
-        # 2. 다음 버튼 (사용자가 그린 박스처럼 하단을 꽉 채움)
-        st.markdown('<div class="next-btn">', unsafe_allow_html=True)
-        if st.button("다음"):
-            st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # --- 교체 끝 ---
-        
-
+        with btn_cols[2]:
+            # '다음' 버튼이 항상 가장 우측 컬럼에 위치
+            if st.button("다음"):
+                st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
+                st.rerun()
     else:
         for pk, group in grouped:
             row = group.iloc[0]
