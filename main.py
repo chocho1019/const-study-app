@@ -351,6 +351,7 @@ else:
     if view_mode == "🃏 암기카드":
         if "card_idx" not in st.session_state: st.session_state.card_idx = 0
         if st.session_state.card_idx >= len(pk_list): st.session_state.card_idx = 0
+
         
         pk = pk_list[st.session_state.card_idx]
         group = grouped.get_group(pk)
@@ -362,20 +363,33 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-        # --- 버튼 배치 수정 시작 ---
-        # 1. 이전 버튼 (한 줄 전체 차지)
-        if st.button("이전"):
-            st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
+        # --------------------------------------------------
+        # 3. 하단 네비게이션 (무조건 전체 너비 사용)
+        # --------------------------------------------------
+        st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+        st.divider()
+    
+        # 현재 인덱스 및 전체 개수 계산
+        current_idx = st.session_state.card_idx
+        total_count = len(pk_list)
+    
+        # 이전 버튼: use_container_width=True를 사용하여 강제로 가로 꽉 채움
+        if st.button("이전", key="btn_prev", use_container_width=True, disabled=(current_idx == 0)):
+            st.session_state.card_idx = max(0, current_idx - 1)
             st.rerun()
-
-        # 2. 현재 페이지 표시 (가운데 정렬)
-        st.markdown(f"<p style='text-align:center; margin: 10px 0;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
-
-        # 3. 다음 버튼 (한 줄 전체 차지)
-        if st.button("다음"):
-            st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
+    
+        # 페이지 표시: 중앙 정렬 및 여백 조절
+        st.markdown(
+            f"<div style='text-align: center; padding: 10px 0; font-size: 16px; font-weight: bold; color: #666;'>"
+            f"{current_idx + 1} / {total_count}"
+            f"</div>", 
+            unsafe_allow_html=True
+        )
+    
+        # 다음 버튼: use_container_width=True를 사용하여 강제로 가로 꽉 채움
+        if st.button("다음", key="btn_next", use_container_width=True, disabled=(current_idx == total_count - 1)):
+            st.session_state.card_idx = min(total_count - 1, current_idx + 1)
             st.rerun()
-        # --- 버튼 배치 수정 끝 ---
         
     else:
         for pk, group in grouped:
