@@ -138,12 +138,41 @@ st.markdown("""
     color: #7F8C8D;             
     margin-bottom: 4px;        
 }
-/* 버튼 기본 스타일 수정: 가로를 꽉 채우도록 설정 */
+/* 1. 버튼 기본 공통 스타일 */
 .stButton button {
-    width: 100% !important;
-    padding: 0.6rem 0.5rem !important; /* 클릭 영역 확대를 위해 패딩 증가 */
+    width: 100%;
+    border-radius: 8px;
 }
-hr { margin: 1.5rem 0; }
+
+/* 2. '다음' 버튼 전용 스타일: 화면 꽉 차게 & 강조 */
+div.next-btn p {
+    display: none; /* 레이블 숨김 방지용 */
+}
+
+div.next-btn button {
+    width: 100% !important;
+    height: 3.5rem !important; /* 높이를 키워 클릭하기 편하게 */
+    background-color: #2E4053 !important; /* 버튼 색상 강조 */
+    color: white !important;
+    font-size: 18px !important;
+    font-weight: bold !important;
+    margin-top: 10px !important;
+}
+
+/* 3. '이전' 버튼 전용 스타일 */
+div.prev-btn button {
+    background-color: #f8f9fa !important;
+    color: #555 !important;
+    border: 1px solid #ddd !important;
+}
+
+/* 4. 페이지 표시 텍스트 */
+.page-info {
+    text-align: right;
+    font-size: 14px;
+    color: #888;
+    margin-top: 10px;
+}
 
 .concept-img {
     margin: 10px 0;
@@ -361,21 +390,29 @@ else:
         
         render_questions(group[group['문제'].str.strip() != ""])
         
-        # --- [수정된 버튼 레이아웃 영역] ---
+        # --- 이 부분을 아래 코드로 완전히 교체하세요 ---
+        
         # 1. 이전 버튼과 페이지 번호를 상단에 나란히 배치
-        sub_cols = st.columns([1, 2])
-        with sub_cols[0]:
+        col_prev, col_page = st.columns([1, 1])
+        with col_prev:
+            st.markdown('<div class="prev-btn">', unsafe_allow_html=True)
             if st.button("이전"):
                 st.session_state.card_idx = max(0, st.session_state.card_idx - 1)
                 st.rerun()
-        with sub_cols[1]:
-            st.markdown(f"<p style='text-align:right; margin-top: 8px; font-size: 14px; color: #888;'>{st.session_state.card_idx + 1} / {len(pk_list)}</p>", unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+        with col_page:
+            # 숫자를 오른쪽 정렬하여 배치
+            st.markdown(f"<div class='page-info'>{st.session_state.card_idx + 1} / {len(pk_list)}</div>", unsafe_allow_html=True)
         
-        # 2. 다음 버튼을 아래에 단독으로 배치 (CSS에 의해 가로 전체를 꽉 채움)
+        # 2. 다음 버튼 (사용자가 그린 박스처럼 하단을 꽉 채움)
+        st.markdown('<div class="next-btn">', unsafe_allow_html=True)
         if st.button("다음"):
             st.session_state.card_idx = min(len(pk_list) - 1, st.session_state.card_idx + 1)
             st.rerun()
-        # --- [수정 끝] ---
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # --- 교체 끝 ---
         
 
     else:
