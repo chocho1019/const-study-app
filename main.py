@@ -40,18 +40,8 @@ SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
 
 @st.cache_resource
 def get_gspread_client():
-    # 1. 먼저 Secrets 내용을 가져옵니다.
-    # 만약 앞선 답변처럼 json_data 문자열 방식을 쓰신다면 json.loads()를 먼저 하세요.
-    # 여기서는 [gcp_service_account] 섹션 방식을 기준으로 설명합니다.
-    creds_info = dict(st.secrets["gcp_service_account"])
-    
-    # 2. [핵심] private_key 내의 실제 "\n" 텍스트를 진짜 줄바꿈 문자로 바꿉니다.
-    if "private_key" in creds_info:
-        creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
-    
-    # 3. 수정된 딕셔너리로 인증을 진행합니다.
     creds = Credentials.from_service_account_info(
-        creds_info,
+        st.secrets["gcp_service_account"],
         scopes=SCOPE
     )
     return gspread.authorize(creds)
