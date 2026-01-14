@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import uuid
@@ -37,35 +38,14 @@ SCOPE = [
 
 SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
 
-import re
-
 @st.cache_resource
 def get_gspread_client():
-    # 1. Secrets 정보를 가져옵니다.
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    
-    # 2. Private Key "강력 세척" 로직
-    raw_key = str(creds_dict["private_key"])
-    
-    # 헤더와 푸터 사이의 데이터만 남기고 모든 불순물 제거
-    # \n, \\n, 공백, 역슬래시 등을 싹 다 지웁니다.
-    core_key = raw_key.replace("-----BEGIN PRIVATE KEY-----", "")
-    core_key = core_key.replace("-----END PRIVATE KEY-----", "")
-    # 정규표현식으로 모든 종류의 줄바꿈과 슬래시를 제거합니다.
-    core_key = re.sub(r"[\s\\n\r\\]", "", core_key)
-    
-    # 구글이 인식할 수 있는 표준 포맷으로 다시 조립 (\n은 실제 줄바꿈)
-    clean_key = f"-----BEGIN PRIVATE KEY-----\n{core_key}\n-----END PRIVATE KEY-----\n"
-    creds_dict["private_key"] = clean_key
-
-    # 3. 인증 시도
     creds = Credentials.from_service_account_info(
-        creds_dict,
+        st.secrets["gcp_service_account"],
         scopes=SCOPE
     )
     return gspread.authorize(creds)
 
-# 이 줄은 기존과 동일하게 유지합니다.
 gc = get_gspread_client()
 
 @st.cache_resource
