@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import uuid
@@ -40,8 +39,30 @@ SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
 
 @st.cache_resource
 def get_gspread_client():
+    # 1. Secrets에서 정보를 딕셔너리로 복사
+    credentials_info = dict(st.secrets["gcp_service_account"])
+    
+    # 2. Private Key 정밀 보정 로직
+    pk = credentials_info["private_key"]
+    
+    # 혹시 모를 이중 이스케이프 제거 (\\n -> \n)
+    pk = pk.replace("\\n", "\n")
+    
+    # 만약 여전히 한 줄로 붙어있거나 처리가 안 된 경우를 대비해 
+    # PEM 헤더와 푸터 사이의 모든 줄바꿈과 공백을 정상화합니다.
+    if "-----BEGIN PRIVATE KEY-----" in pk:
+        header = "-----BEGIN PRIVATE KEY-----"
+        footer = "-----END PRIVATE KEY-----"
+        # 헤더와 푸터 사이의 순수 키 본문만 추출
+        content = pk.replace(header, "").replace(footer, "").strip()
+        # 본문 내의 모든 공백/줄바꿈 제거 후 64자마다 줄바꿈 (표준 PEM 방식)
+        content = "".join(content.split()) 
+        # 최종 재조립
+        fixed_pk = f"{header}\n{content}\n{footer}"
+        credentials_info["private_key"] = fixed_pk
+
     creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
+        credentials_info,
         scopes=SCOPE
     )
     return gspread.authorize(creds)
