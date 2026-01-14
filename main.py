@@ -42,24 +42,30 @@ def get_gspread_client():
     # 1. Secrets에서 정보를 딕셔너리로 복사
     credentials_info = dict(st.secrets["gcp_service_account"])
     
-    # 2. Private Key 정밀 보정 로직
+    # 2. Private Key 정밀 보정 로직 (Slicing 방식)
     pk = credentials_info["private_key"]
     
     # 혹시 모를 이중 이스케이프 제거 (\\n -> \n)
     pk = pk.replace("\\n", "\n")
     
-    # 만약 여전히 한 줄로 붙어있거나 처리가 안 된 경우를 대비해 
-    # PEM 헤더와 푸터 사이의 모든 줄바꿈과 공백을 정상화합니다.
-    if "-----BEGIN PRIVATE KEY-----" in pk:
-        header = "-----BEGIN PRIVATE KEY-----"
-        footer = "-----END PRIVATE KEY-----"
-        # 헤더와 푸터 사이의 순수 키 본문만 추출
-        content = pk.replace(header, "").replace(footer, "").strip()
-        # 본문 내의 모든 공백/줄바꿈 제거 후 64자마다 줄바꿈 (표준 PEM 방식)
-        content = "".join(content.split()) 
-        # 최종 재조립
-        fixed_pk = f"{header}\n{content}\n{footer}"
-        credentials_info["private_key"] = fixed_pk
+    header = "-----BEGIN PRIVATE KEY-----"
+    footer = "-----END PRIVATE KEY-----"
+    
+    if header in pk and footer in pk:
+        # 헤더의 시작 위치와 푸터의 끝 위치를 정확히 계산
+        start_idx = pk.find(header)
+        end_idx = pk.find(footer) + len(footer)
+        
+        # [핵심 수정] 헤더 이전이나 푸터 이후에 붙은 모든 찌꺼기 데이터를 버리고 딱 키만 추출
+        clean_pk = pk[start_idx:end_idx]
+        
+        # 내부 줄바꿈 보정 (표준 PEM 규격 준수)
+        # 헤더와 푸터를 제외한 본문만 추출하여 공백 제거 후 재조립
+        inner_content = clean_pk.replace(header, "").replace(footer, "").strip()
+        inner_content = "".join(inner_content.split()) # 모든 내부 공백/줄바꿈 제거
+        
+        # 최종적으로 깔끔한 PEM 형식으로 재조립
+        credentials_info["private_key"] = f"{header}\n{inner_content}\n{footer}"
 
     creds = Credentials.from_service_account_info(
         credentials_info,
