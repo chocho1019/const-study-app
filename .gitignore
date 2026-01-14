@@ -1,0 +1,9 @@
+# 구글 인증 JSON 파일 전체 제외
+*.json
+
+# Streamlit 비밀 설정 폴더 제외
+.streamlit/
+
+# (선택) 파이썬 실행 시 생성되는 임시 파일들 제외
+__pycache__/
+*.pyc
