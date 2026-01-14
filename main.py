@@ -39,29 +39,24 @@ SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
 
 @st.cache_resource
 def get_gspread_client():
-    # 1. Secrets에서 정보를 딕셔너리로 복사
+    # 1. Secrets 정보를 가져옵니다.
     credentials_info = dict(st.secrets["gcp_service_account"])
-    
-    # 2. Private Key 정밀 타격 보정 로직
-    pk = credentials_info["private_key"]
-    
-    # 이스케이프 문자 및 불필요한 공백 사전 제거
-    pk = pk.replace("\\n", "\n").replace("\r", "")
-    
-    header = "-----BEGIN PRIVATE KEY-----"
-    footer = "-----END PRIVATE KEY-----"
-    
-    if header in pk and footer in pk:
-        # 헤더의 시작점부터 푸터의 끝점까지만 '칼같이' 자릅니다.
-        start_idx = pk.find(header)
-        end_idx = pk.find(footer) + len(footer)
-        
-        # [핵심] 푸터 뒤에 오는 그 어떤 문자(엔터, 공백 등)도 포함되지 않도록 슬라이싱
-        fixed_pk = pk[start_idx:end_idx]
-        
-        # 본문 내부에 혹시 섞여있을지 모를 중복 공백만 정리하여 다시 할당
-        credentials_info["private_key"] = fixed_pk.strip()
 
+    # 2. 키 오류 방지 로직 (가장 강력하고 단순한 방법)
+    # 어떤 형태로 들어오든 문자열로 변환 후 정리합니다.
+    pk = str(credentials_info["private_key"])
+    
+    # 실제 줄바꿈이 아니라 글자 "\n"으로 들어온 경우 진짜 줄바꿈으로 변경
+    if "\\n" in pk:
+        pk = pk.replace("\\n", "\n")
+    
+    # 앞뒤 따옴표나 공백이 딸려왔을 경우 제거
+    pk = pk.strip().strip('"').strip("'")
+    
+    # 정리된 키를 다시 딕셔너리에 넣습니다.
+    credentials_info["private_key"] = pk
+
+    # 3. 구글 인증
     creds = Credentials.from_service_account_info(
         credentials_info,
         scopes=SCOPE
