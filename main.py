@@ -37,28 +37,30 @@ SCOPE = [
 
 SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
 
+import re
+
 @st.cache_resource
 def get_gspread_client():
     # 1. Secrets 정보를 가져옵니다.
-    credentials_info = dict(st.secrets["gcp_service_account"])
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    
+    # 2. Private Key "강력 세척" 로직
+    raw_key = str(creds_dict["private_key"])
+    
+    # 헤더와 푸터 사이의 데이터만 남기고 모든 불순물 제거
+    # \n, \\n, 공백, 역슬래시 등을 싹 다 지웁니다.
+    core_key = raw_key.replace("-----BEGIN PRIVATE KEY-----", "")
+    core_key = core_key.replace("-----END PRIVATE KEY-----", "")
+    # 정규표현식으로 모든 종류의 줄바꿈과 슬래시를 제거합니다.
+    core_key = re.sub(r"[\s\\n\r\\]", "", core_key)
+    
+    # 구글이 인식할 수 있는 표준 포맷으로 다시 조립 (\n은 실제 줄바꿈)
+    clean_key = f"-----BEGIN PRIVATE KEY-----\n{core_key}\n-----END PRIVATE KEY-----\n"
+    creds_dict["private_key"] = clean_key
 
-    # 2. 키 오류 방지 로직 (가장 강력하고 단순한 방법)
-    # 어떤 형태로 들어오든 문자열로 변환 후 정리합니다.
-    pk = str(credentials_info["private_key"])
-    
-    # 실제 줄바꿈이 아니라 글자 "\n"으로 들어온 경우 진짜 줄바꿈으로 변경
-    if "\\n" in pk:
-        pk = pk.replace("\\n", "\n")
-    
-    # 앞뒤 따옴표나 공백이 딸려왔을 경우 제거
-    pk = pk.strip().strip('"').strip("'")
-    
-    # 정리된 키를 다시 딕셔너리에 넣습니다.
-    credentials_info["private_key"] = pk
-
-    # 3. 구글 인증
+    # 3. 인증 시도
     creds = Credentials.from_service_account_info(
-        credentials_info,
+        creds_dict,
         scopes=SCOPE
     )
     return gspread.authorize(creds)
