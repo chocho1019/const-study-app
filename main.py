@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import uuid
@@ -40,8 +39,16 @@ SPREADSHEET_ID = "1eg3TnoILIHXCzf4fPCU6uqzZssLnFS2xHO5zD7N2c0g"
 
 @st.cache_resource
 def get_gspread_client():
+    # [수정] secrets 정보를 딕셔너리로 가져옵니다.
+    credentials_info = dict(st.secrets["gcp_service_account"])
+
+    # [수정] private_key에 있는 '\\n' 문자열을 실제 줄바꿈 문자 '\n'으로 치환합니다.
+    # 이렇게 하면 secrets.toml에서 줄바꿈이 문자로 인식되는 문제를 해결할 수 있습니다.
+    if "private_key" in credentials_info:
+        credentials_info["private_key"] = credentials_info["private_key"].replace("\\n", "\n")
+
     creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
+        credentials_info,
         scopes=SCOPE
     )
     return gspread.authorize(creds)
