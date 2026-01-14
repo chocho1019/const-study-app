@@ -1,4 +1,5 @@
-
+# 구글 인증 JSON 파일 전체 제외
+*.json
 
 # Streamlit 비밀 설정 폴더 제외
 .streamlit/
